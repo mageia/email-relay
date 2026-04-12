@@ -2,9 +2,15 @@ import type { RouterClient } from "@orpc/server";
 
 import { protectedProcedure, publicProcedure } from "../index";
 import { adminRouter } from "./admin";
+import { alertsRouter } from "./alerts";
+import { groupsRouter } from "./groups";
+import { inboxRouter } from "./inbox";
 
 export const appRouter = {
   admin: adminRouter,
+  inbox: inboxRouter,
+  groups: groupsRouter,
+  alerts: alertsRouter,
   healthCheck: publicProcedure.handler(() => {
     return "OK";
   }),
