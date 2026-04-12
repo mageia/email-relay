@@ -1,4 +1,5 @@
 import { createDb } from "@email-relay/db";
+import { imapMailboxState } from "@email-relay/db/schema/imap";
 import { outlookMailboxState } from "@email-relay/db/schema/outlook";
 import { gmailMailboxState } from "@email-relay/db/schema/provider";
 
@@ -59,5 +60,14 @@ export async function handleScheduled(_controller: ScheduledController, env: Env
         deltaLink: state.deltaLink ?? undefined,
       });
     }
+  }
+
+  const imapStates = await db.select().from(imapMailboxState);
+  for (const state of imapStates as Array<{ mailboxId: string }>) {
+    await env.MAIL_SYNC_QUEUE.send({
+      provider: "imap",
+      mailboxId: state.mailboxId,
+      reason: "imap-poll",
+    });
   }
 }

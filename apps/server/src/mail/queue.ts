@@ -1,10 +1,11 @@
 import { createDb } from "@email-relay/db";
-import { imapMailboxState } from "@email-relay/db/schema/imap";
+import { imapFolderCursor, imapMailboxState } from "@email-relay/db/schema/imap";
 import { mailbox } from "@email-relay/db/schema/mail";
 import { outlookMailboxState } from "@email-relay/db/schema/outlook";
 import { gmailMailboxState } from "@email-relay/db/schema/provider";
 import {
   fetchImapFolderMessages,
+  nextUidWindow,
   createOutlookSubscription,
   extractHistoryMessageIds,
   getOutlookDeltaPage,
@@ -102,7 +103,17 @@ export async function handleMailQueue(batch: MessageBatch<unknown>, env: Env) {
       }
 
       const selectedFolders = payload.folderIds ?? (JSON.parse(mailboxRow.selectedFoldersJson) as string[]);
+      const cursors = await db.select().from(imapFolderCursor);
       for (const folderId of selectedFolders) {
+        const cursor = [...cursors]
+          .reverse()
+          .find(
+            (entry: { mailboxId: string; folderId: string; lastSeenUid?: number | null }) =>
+              entry.mailboxId === payload.mailboxId && entry.folderId === folderId,
+          );
+        const searchWindow = nextUidWindow({
+          lastSeenUid: cursor?.lastSeenUid ?? null,
+        });
         const records = await fetchImapFolderMessages({
           host: state.host,
           port: state.port,
@@ -110,6 +121,7 @@ export async function handleMailQueue(batch: MessageBatch<unknown>, env: Env) {
           username: state.username,
           password: credentials.accessToken,
           folderId,
+          uidSearch: searchWindow.search,
           limit: 50,
         });
 
@@ -120,6 +132,19 @@ export async function handleMailQueue(batch: MessageBatch<unknown>, env: Env) {
             ...normalized,
           });
         }
+
+        const lastSeenUid =
+          records.length > 0
+            ? (records[records.length - 1]?.uid ?? null)
+            : (cursor?.lastSeenUid ?? null);
+
+        await db.insert(imapFolderCursor).values({
+          mailboxId: payload.mailboxId,
+          folderId,
+          uidValidity: null,
+          lastSeenUid,
+          lastPolledAt: new Date(),
+        });
       }
 
       message.ack();

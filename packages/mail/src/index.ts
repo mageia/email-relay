@@ -12,6 +12,7 @@ export * from "./imap/client";
 export * from "./imap/discovery";
 export * from "./imap/folders";
 export * from "./imap/message";
+export * from "./imap/poll";
 export * from "./imap/socket";
 export * from "./imap/validate";
 export * from "./outlook/constants";
