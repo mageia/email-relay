@@ -12,10 +12,12 @@ config({ path: "../../apps/server/.env" });
 const app = await alchemy("email-relay");
 
 const db = await D1Database("database", {
+  adopt: true,
   migrationsDir: "../../packages/db/src/migrations",
 });
 
 export const web = await Vite("web", {
+  adopt: true,
   cwd: "../../apps/web",
   assets: "dist",
   bindings: {
@@ -24,6 +26,7 @@ export const web = await Vite("web", {
 });
 
 export const server = await Worker("server", {
+  adopt: true,
   cwd: "../../apps/server",
   entrypoint: "src/index.ts",
   compatibility: "node",
@@ -32,6 +35,7 @@ export const server = await Worker("server", {
     CORS_ORIGIN: alchemy.env.CORS_ORIGIN!,
     BETTER_AUTH_SECRET: alchemy.secret.env.BETTER_AUTH_SECRET!,
     BETTER_AUTH_URL: alchemy.env.BETTER_AUTH_URL!,
+    ADMIN_BOOTSTRAP_PASSWORD: alchemy.secret.env.ADMIN_BOOTSTRAP_PASSWORD!,
   },
   dev: {
     port: 3000,

@@ -1,15 +1,19 @@
-export type SessionUser = {
-  id: string;
-  email: string;
-  name?: string | null;
-  image?: string | null;
+export type AuthStore = {
+  getPasswordHash: () => Promise<string | null>;
+  setPasswordHash: (value: string) => Promise<void>;
+  insertSession: (tokenHash: string, expiresAt: Date) => Promise<void>;
+  getSession: (tokenHash: string) => Promise<{ expiresAt: Date } | null>;
+  deleteSession: (tokenHash: string) => Promise<void>;
 };
 
-export type Session = {
-  user: SessionUser;
-} | null;
+export type AdminSession = {
+  authenticated: true;
+  expiresAt: Date;
+  adminConfigId: string;
+};
 
 export interface Context {
-  auth: null;
-  session: Session;
+  adminSession: AdminSession | null;
+  db: any;
+  authStore: AuthStore;
 }

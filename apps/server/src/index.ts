@@ -1,4 +1,10 @@
 import { createContext } from "@email-relay/api/context";
+import {
+  clearAdminSessionCookie,
+  createAdminSessionCookie,
+  parseAdminSessionCookie,
+} from "@email-relay/api/admin-auth/cookie";
+import { loginAdmin, logoutAdmin } from "@email-relay/api/admin-auth/service";
 import { appRouter } from "@email-relay/api/routers/index";
 import { createAuth } from "@email-relay/auth";
 import { env } from "@email-relay/env/server";
@@ -10,6 +16,7 @@ import { ZodToJsonSchemaConverter } from "@orpc/zod/zod4";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { logger } from "hono/logger";
+import { z } from "zod";
 
 const app = new Hono();
 
@@ -25,6 +32,57 @@ app.use(
 );
 
 app.on(["POST", "GET"], "/api/auth/*", (c) => createAuth().handler(c.req.raw));
+
+app.post("/admin/login", async (c) => {
+  const body = await c.req.json();
+  const parsed = z
+    .object({
+      password: z.string().min(12),
+    })
+    .safeParse(body);
+
+  if (!parsed.success) {
+    return c.json({ message: "Invalid password payload" }, 400);
+  }
+
+  const context = await createContext({ context: c });
+  const result = await loginAdmin({
+    store: context.authStore,
+    password: parsed.data.password,
+  });
+
+  if (!result.ok) {
+    return c.json({ message: "Invalid password" }, 401);
+  }
+
+  c.header("Set-Cookie", createAdminSessionCookie(result.sessionToken, result.expiresAt));
+  return c.json({ ok: true, expiresAt: result.expiresAt.toISOString() });
+});
+
+app.post("/admin/logout", async (c) => {
+  const context = await createContext({ context: c });
+  const token = parseAdminSessionCookie(c.req.header("cookie") ?? null);
+
+  await logoutAdmin({
+    store: context.authStore,
+    token,
+  });
+
+  c.header("Set-Cookie", clearAdminSessionCookie());
+  return c.json({ ok: true });
+});
+
+app.get("/admin/session", async (c) => {
+  const context = await createContext({ context: c });
+  if (!context.adminSession) {
+    return c.json({ authenticated: false }, 401);
+  }
+
+  return c.json({
+    authenticated: true,
+    expiresAt: context.adminSession.expiresAt.toISOString(),
+  });
+});
 
 export const apiHandler = new OpenAPIHandler(appRouter, {
   plugins: [

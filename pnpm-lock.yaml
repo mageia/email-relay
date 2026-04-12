@@ -305,6 +305,9 @@ importers:
       dotenv:
         specifier: 'catalog:'
         version: 17.4.1
+      drizzle-orm:
+        specifier: ^0.45.1
+        version: 0.45.2(@cloudflare/workers-types@4.20260412.1)(@libsql/client@0.15.15)(kysely@0.28.16)
       zod:
         specifier: 'catalog:'
         version: 4.3.6

@@ -21,7 +21,8 @@
     "@orpc/server": "catalog:",
     "@orpc/zod": "catalog:",
     "dotenv": "catalog:",
-    "zod": "catalog:"
+    "zod": "catalog:",
+    "drizzle-orm": "^0.45.1"
   },
   "devDependencies": {
     "@email-relay/config": "workspace:*",

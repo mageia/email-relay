@@ -1,7 +1,7 @@
 import { timingSafeEqual } from "node:crypto";
 
 const PASSWORD_PREFIX = "pbkdf2";
-const ITERATIONS = 210_000;
+const ITERATIONS = 100_000;
 const HASH_BYTES = 32;
 const SALT_BYTES = 16;
 
