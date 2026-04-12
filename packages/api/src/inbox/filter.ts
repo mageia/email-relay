@@ -13,6 +13,7 @@ export function normalizeInboxFilters(
     provider: input.provider || undefined,
     groupId: input.groupId || undefined,
     mailboxId: input.mailboxId || undefined,
+    status: input.status || undefined,
     limit: input.limit && input.limit > 0 ? Math.min(input.limit, MAX_LIMIT) : DEFAULT_LIMIT,
   };
 }

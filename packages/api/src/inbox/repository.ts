@@ -10,6 +10,7 @@ function buildConditions(filters: ReturnType<typeof normalizeInboxFilters>) {
     filters.provider ? eq(mailbox.provider, filters.provider) : undefined,
     filters.groupId ? eq(mailbox.groupId, filters.groupId) : undefined,
     filters.mailboxId ? eq(mailbox.id, filters.mailboxId) : undefined,
+    filters.status ? eq(mailbox.status, filters.status) : undefined,
     filters.search ? like(mailMessage.bodyText, `%${filters.search}%`) : undefined,
   ].filter(Boolean);
 }
@@ -91,6 +92,7 @@ export function createInboxRepository(db: any) {
           id: mailbox.id,
           address: mailbox.address,
           provider: mailbox.provider,
+          status: mailbox.status,
         })
         .from(mailbox)
         .orderBy(desc(mailbox.createdAt));

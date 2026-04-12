@@ -11,6 +11,7 @@ export const inboxRouter = {
         provider: z.string().optional(),
         groupId: z.string().optional(),
         mailboxId: z.string().optional(),
+        status: z.string().optional(),
         limit: z.number().int().positive().max(100).optional(),
       }),
     )

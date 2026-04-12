@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@email-relay/db": "workspace:*",
+    "postal-mime": "^2.7.4",
     "zod": "catalog:"
   },
   "devDependencies": {

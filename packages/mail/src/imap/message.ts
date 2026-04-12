@@ -1,45 +1,69 @@
+import PostalMime from "postal-mime";
+import type { Address } from "postal-mime";
+
+function recipientsToJson(value?: Address | Address[]) {
+  if (!value) {
+    return "[]";
+  }
+
+  const entries = Array.isArray(value) ? value : [value];
+  return JSON.stringify(entries);
+}
+
+function measureContentSize(content?: ArrayBuffer | Uint8Array | string) {
+  if (!content) {
+    return 0;
+  }
+
+  if (typeof content === "string") {
+    return new TextEncoder().encode(content).byteLength;
+  }
+
+  if (ArrayBuffer.isView(content)) {
+    return content.byteLength;
+  }
+
+  if (content instanceof ArrayBuffer) {
+    return content.byteLength;
+  }
+
+  return 0;
+}
+
 export async function normalizeImapMessage(input: {
   uid: number;
   raw: string;
   folderId: string;
   internalDate: Date;
 }) {
-  const [rawHeaders = "", ...bodyParts] = input.raw.split("\r\n\r\n");
-  const body = bodyParts.join("\r\n\r\n");
-  const headerMap = new Map<string, string>();
+  const parser = new PostalMime();
+  const parsed = await parser.parse(input.raw);
+  const snippetSource = parsed.text ?? parsed.html ?? "";
+  const snippet = snippetSource.slice(0, 160);
 
-  for (const line of rawHeaders.split("\r\n")) {
-    const index = line.indexOf(":");
-    if (index === -1) {
-      continue;
-    }
+  const attachments = (parsed.attachments ?? []).map((attachment) => ({
+    filename: attachment.filename ?? "attachment",
+    mimeType: attachment.mimeType ?? "application/octet-stream",
+    size: measureContentSize(attachment.content),
+    inline: attachment.disposition === "inline",
+    cid: attachment.contentId ?? null,
+  }));
 
-    const key = line.slice(0, index).trim().toLowerCase();
-    const value = line.slice(index + 1).trim();
-    headerMap.set(key, value);
-  }
-
-  const contentType = headerMap.get("content-type")?.toLowerCase() ?? "text/plain";
-  const subject = headerMap.get("subject") ?? "";
-  const from = headerMap.get("from");
-  const to = headerMap.get("to");
-  const cc = headerMap.get("cc");
-  const messageId = headerMap.get("message-id") ?? null;
-  const sentAtText = headerMap.get("date");
+  const sentAt = parsed.date ? new Date(parsed.date) : input.internalDate;
 
   return {
     providerMessageId: `${input.folderId}:${input.uid}`,
-    internetMessageId: messageId,
-    subject,
-    snippet: body.slice(0, 160),
-    fromJson: JSON.stringify(from ? [{ raw: from }] : []),
-    toJson: JSON.stringify(to ? [{ raw: to }] : []),
-    ccJson: JSON.stringify(cc ? [{ raw: cc }] : []),
-    bodyHtml: contentType.includes("text/html") ? body : "",
-    bodyText: contentType.includes("text/plain") ? body : body,
+    internetMessageId: parsed.messageId ?? null,
+    subject: parsed.subject ?? "",
+    snippet,
+    fromJson: recipientsToJson(parsed.from),
+    toJson: recipientsToJson(parsed.to),
+    ccJson: recipientsToJson(parsed.cc),
+    bodyHtml: parsed.html ?? "",
+    bodyText: parsed.text ?? "",
     isRead: false,
     receivedAt: input.internalDate,
-    sentAt: sentAtText ? new Date(sentAtText) : input.internalDate,
-    attachments: [] as Array<never>,
+    sentAt,
+    attachments,
   };
 }

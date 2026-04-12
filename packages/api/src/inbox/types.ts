@@ -3,5 +3,6 @@ export type InboxFilters = {
   provider?: string;
   groupId?: string;
   mailboxId?: string;
+  status?: string;
   limit?: number;
 };

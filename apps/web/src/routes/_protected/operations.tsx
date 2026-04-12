@@ -1,10 +1,10 @@
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 
 import AlertSummaryCards from "@/components/alert-summary-cards";
 import OperationsGroupBackfillSection, { type GroupBackfillPayload } from "@/components/operations-group-backfill";
 import OperationsMailboxBackfillSection, { type MailboxBackfillPayload } from "@/components/operations-mailbox-backfill";
-import { client, orpc } from "@/utils/orpc";
+import { client, orpc, queryClient } from "@/utils/orpc";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_protected/operations")({
@@ -15,8 +15,17 @@ function OperationsPage() {
   const summary = useQuery(orpc.alerts.summary.queryOptions());
   const mailboxes = useQuery(orpc.mailboxes.list.queryOptions());
   const groups = useQuery(orpc.groups.list.queryOptions());
+  const retryJobs = useQuery(orpc.operations.listRetryJobs.queryOptions());
 
   const formatDate = (value: string) => new Date(`${value}T00:00:00.000Z`).toISOString();
+
+  const retryJob = useMutation({
+    mutationFn: async (jobId: string) => client.operations.retryJob({ jobId }),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: orpc.operations.listRetryJobs.queryKey() });
+      await queryClient.invalidateQueries({ queryKey: orpc.alerts.summary.queryKey() });
+    },
+  });
 
   const triggerMailboxBackfill = async ({ mailboxId, rangeStart, rangeEnd }: MailboxBackfillPayload) => {
     try {
@@ -76,6 +85,51 @@ function OperationsPage() {
             mailboxes={mailboxes.data ?? []}
             onBackfill={triggerMailboxBackfill}
           />
+        )}
+      </section>
+
+      <section className="rounded-xl border p-4 space-y-3">
+        <div>
+          <h2 className="text-xl font-semibold">待重试任务</h2>
+          <p className="text-sm text-muted-foreground">对已经进入 retry-scheduled 的补拉任务可手动立即重排队。</p>
+        </div>
+        {retryJobs.isLoading ? (
+          <p className="text-sm text-muted-foreground">重试任务加载中...</p>
+        ) : retryJobs.data && retryJobs.data.length > 0 ? (
+          <ul className="space-y-3">
+            {retryJobs.data.map((job: { id: string; mailboxAddress?: string | null; provider?: string | null; retryCount: number; errorCategory?: string | null; errorMessage?: string | null; nextAttemptAt?: string | Date | null }) => (
+              <li key={job.id} className="rounded-lg border p-3">
+                <div className="font-medium">{job.mailboxAddress ?? job.id}</div>
+                <div className="text-sm text-muted-foreground">
+                  {(job.provider ?? "unknown")} · 已重试 {job.retryCount} 次 · {job.errorCategory ?? "temporary"}
+                </div>
+                {job.errorMessage ? <div className="mt-1 text-sm text-muted-foreground">{job.errorMessage}</div> : null}
+                {job.nextAttemptAt ? (
+                  <div className="mt-1 text-xs text-muted-foreground">
+                    下次自动重试：{new Date(job.nextAttemptAt).toLocaleString("zh-CN", { hour12: false })}
+                  </div>
+                ) : null}
+                <button
+                  className="mt-3 text-sm text-blue-600 hover:underline disabled:text-muted-foreground"
+                  disabled={retryJob.isPending}
+                  onClick={() => {
+                    retryJob.mutate(job.id, {
+                      onSuccess: () => {
+                        toast.success("已手动重新排队");
+                      },
+                      onError: (error) => {
+                        toast.error(`手动重试失败：${(error as Error).message}`);
+                      },
+                    });
+                  }}
+                >
+                  立即重试
+                </button>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-sm text-muted-foreground">当前没有待重试任务。</p>
         )}
       </section>
 

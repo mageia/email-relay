@@ -72,3 +72,51 @@ export async function enqueueGroupBackfill(input: {
     await input.enqueue(payload);
   }
 }
+
+
+export async function requeueHistoryBackfillJob(input: {
+  job: {
+    id: string;
+    mailboxId?: string | null;
+    type: string;
+    requestedRangeStart?: Date | number | null;
+    requestedRangeEnd?: Date | number | null;
+  };
+  mailbox: { id: string; provider: "gmail" | "outlook" | "imap" };
+  updateJob: (jobId: string, patch: { status: string; nextAttemptAt: null; startedAt: null }) => Promise<void>;
+  enqueue: (payload: unknown) => Promise<void>;
+}) {
+  if (input.job.type != "history-backfill") {
+    throw new Error(`Unsupported retry job type: ${input.job.type}`);
+  }
+
+  const rangeStart =
+    input.job.requestedRangeStart instanceof Date
+      ? input.job.requestedRangeStart
+      : input.job.requestedRangeStart
+        ? new Date(input.job.requestedRangeStart)
+        : null;
+  const rangeEnd =
+    input.job.requestedRangeEnd instanceof Date
+      ? input.job.requestedRangeEnd
+      : input.job.requestedRangeEnd
+        ? new Date(input.job.requestedRangeEnd)
+        : null;
+
+  if (!rangeStart || Number.isNaN(rangeStart.getTime()) || !rangeEnd || Number.isNaN(rangeEnd.getTime())) {
+    throw new Error(`Retry job ${input.job.id} is missing a valid requested range`);
+  }
+
+  const [payload] = buildBackfillPayloads({
+    mailboxes: [input.mailbox],
+    rangeStart,
+    rangeEnd,
+  });
+
+  await input.enqueue(payload);
+  await input.updateJob(input.job.id, {
+    status: "queued",
+    nextAttemptAt: null,
+    startedAt: null,
+  });
+}
