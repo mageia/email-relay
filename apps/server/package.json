@@ -17,6 +17,7 @@
     "@orpc/server": "catalog:",
     "@orpc/zod": "catalog:",
     "better-auth": "catalog:",
+    "drizzle-orm": "^0.45.1",
     "dotenv": "catalog:",
     "hono": "catalog:",
     "zod": "catalog:"

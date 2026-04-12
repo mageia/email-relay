@@ -1,7 +1,14 @@
 const RETRY_DELAYS = [30, 60, 120, 300, 900] as const;
 
-export function nextRetryDelaySeconds(attempt: number) {
-  return RETRY_DELAYS[Math.min(attempt, RETRY_DELAYS.length - 1)];
+export function nextRetryDelaySeconds(attempt: number): number {
+  const cappedAttempt = Math.max(0, Math.min(attempt, RETRY_DELAYS.length - 1));
+  const delay = RETRY_DELAYS[cappedAttempt];
+
+  if (delay === undefined) {
+    throw new Error(`Missing retry delay for attempt ${attempt}`);
+  }
+
+  return delay;
 }
 
 export function classifySyncError(error: Error) {

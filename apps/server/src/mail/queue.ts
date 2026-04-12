@@ -1,4 +1,5 @@
-import { asc, eq, or } from "drizzle-orm";
+import { and, asc, eq, or } from "drizzle-orm";
+import type { InferModel } from "drizzle-orm";
 import { createDb } from "@email-relay/db";
 import { imapFolderCursor, imapMailboxState } from "@email-relay/db/schema/imap";
 import { mailbox, syncAlert, syncJob } from "@email-relay/db/schema/mail";
@@ -12,7 +13,6 @@ import {
   getOutlookDeltaPage,
   getGmailHistoryPage,
   MailSyncPayloadSchema,
-  MailSyncPayload,
   createMailboxCredentialStore,
   normalizeImapMessage,
   normalizeGmailMessage,
@@ -22,6 +22,7 @@ import {
   classifySyncError,
   nextRetryDelaySeconds,
 } from "@email-relay/mail";
+import type { MailSyncPayload } from "@email-relay/mail";
 import { toSyncAlertInput } from "@email-relay/api/operations/alerts";
 
 async function fetchGmailMessages(
@@ -95,7 +96,7 @@ const SYNC_REASON_TO_JOB_TYPE: Record<MailSyncPayload["reason"], "history-backfi
   "imap-backfill": "history-backfill",
 };
 
-type SyncJobRow = ReturnType<typeof syncJob.$inferSelect>[number];
+type SyncJobRow = InferModel<typeof syncJob, "select">;
 
 async function claimSyncJob(db: ReturnType<typeof createDb>, payload: MailSyncPayload) {
   const jobType = SYNC_REASON_TO_JOB_TYPE[payload.reason];
@@ -106,11 +107,7 @@ async function claimSyncJob(db: ReturnType<typeof createDb>, payload: MailSyncPa
   const [job] = await db
     .select()
     .from(syncJob)
-    .where(
-      eq(syncJob.mailboxId, payload.mailboxId),
-      eq(syncJob.type, jobType),
-      or(eq(syncJob.status, "queued"), eq(syncJob.status, "retry-scheduled")),
-    )
+    .where(and(eq(syncJob.mailboxId, payload.mailboxId), eq(syncJob.type, jobType), or(eq(syncJob.status, "queued"), eq(syncJob.status, "retry-scheduled"))))
     .orderBy(asc(syncJob.createdAt))
     .limit(1);
 

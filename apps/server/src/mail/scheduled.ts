@@ -1,10 +1,11 @@
-import { eq, sql } from "drizzle-orm";
+import { and, eq, lt, sql } from "drizzle-orm";
 import { createDb } from "@email-relay/db";
 import { imapMailboxState } from "@email-relay/db/schema/imap";
-import { mailbox, syncJob } from "@email-relay/db/schema/mail";
+import { mailbox, syncAlert, syncJob } from "@email-relay/db/schema/mail";
 import { outlookMailboxState } from "@email-relay/db/schema/outlook";
 import { gmailMailboxState } from "@email-relay/db/schema/provider";
 import { buildBackfillPayloads } from "@email-relay/mail";
+import { selectStaleMailboxAlertCandidates, toSyncAlertInput } from "@email-relay/api/operations/alerts";
 
 export async function handleScheduled(_controller: ScheduledController, env: Env) {
   const db = createDb();
@@ -74,13 +75,58 @@ export async function handleScheduled(_controller: ScheduledController, env: Env
     });
   }
 
+  const staleSyncThreshold = new Date(now - 60 * 60 * 1000);
+  const staleMailboxes = await db
+    .select({
+      mailboxId: mailbox.id,
+      groupId: mailbox.groupId,
+      address: mailbox.address,
+      lastSuccessfulSyncAt: mailbox.lastSuccessfulSyncAt,
+    })
+    .from(mailbox)
+    .where(lt(mailbox.lastSuccessfulSyncAt, staleSyncThreshold));
+
+  const openStaleSyncAlerts = await db
+    .select({
+      mailboxId: syncAlert.mailboxId,
+    })
+    .from(syncAlert)
+    .where(and(eq(syncAlert.status, "open"), eq(syncAlert.type, "stale-sync")));
+
+  const staleAlertCandidates = selectStaleMailboxAlertCandidates({
+    staleMailboxes: staleMailboxes.flatMap((mailboxRow) => {
+      if (!mailboxRow.lastSuccessfulSyncAt) {
+        return [];
+      }
+
+      return [
+        {
+          mailboxId: mailboxRow.mailboxId,
+          address: mailboxRow.address,
+          lastSuccessfulSyncAt: mailboxRow.lastSuccessfulSyncAt,
+        },
+      ];
+    }),
+    openAlertMailboxIds: openStaleSyncAlerts.map((alertRow) => alertRow.mailboxId),
+  });
+
+  for (const staleMailbox of staleAlertCandidates) {
+    const mailboxRow = staleMailboxes.find((candidate) => candidate.mailboxId === staleMailbox.mailboxId);
+    const staleAt = staleMailbox.lastSuccessfulSyncAt.toISOString();
+    await db.insert(syncAlert).values(
+      toSyncAlertInput({
+        mailboxId: staleMailbox.mailboxId,
+        groupId: mailboxRow?.groupId ?? undefined,
+        category: "stale-sync",
+        detail: `${staleMailbox.address} 超过 1 小时没有成功同步，上次成功时间：${staleAt}` ,
+      }),
+    );
+  }
+
   const retryJobs = await db
     .select()
     .from(syncJob)
-    .where(
-      eq(syncJob.status, "retry-scheduled"),
-      sql`${syncJob.nextAttemptAt} <= ${now}`,
-    );
+    .where(and(eq(syncJob.status, "retry-scheduled"), sql`${syncJob.nextAttemptAt} <= ${now}`));
 
   for (const job of retryJobs as Array<{
     id: string;
@@ -88,7 +134,7 @@ export async function handleScheduled(_controller: ScheduledController, env: Env
     type: string;
     requestedRangeStart?: Date | number | null;
     requestedRangeEnd?: Date | number | null;
-  }>) {
+  }> ) {
     if (
       job.type !== "history-backfill" ||
       !job.mailboxId ||

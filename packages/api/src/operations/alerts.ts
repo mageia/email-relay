@@ -1,7 +1,15 @@
+export type SyncAlertCategory = "auth-expired" | "rate-limited" | "temporary" | "stale-sync";
+
+export type StaleMailboxCandidate = {
+  mailboxId: string;
+  address: string;
+  lastSuccessfulSyncAt: Date;
+};
+
 export function toSyncAlertInput(input: {
   mailboxId?: string;
   groupId?: string;
-  category: "auth-expired" | "rate-limited" | "temporary" | "stale-sync";
+  category: SyncAlertCategory;
   detail: string;
 }) {
   const severity =
@@ -27,4 +35,15 @@ export function toSyncAlertInput(input: {
     title: titleMap[input.category],
     detail: input.detail,
   };
+}
+
+export function selectStaleMailboxAlertCandidates(input: {
+  staleMailboxes: StaleMailboxCandidate[];
+  openAlertMailboxIds: Array<string | null | undefined>;
+}): StaleMailboxCandidate[] {
+  const alertedMailboxIds = new Set(
+    input.openAlertMailboxIds.filter((mailboxId): mailboxId is string => Boolean(mailboxId)),
+  );
+
+  return input.staleMailboxes.filter((mailbox) => !alertedMailboxIds.has(mailbox.mailboxId));
 }
