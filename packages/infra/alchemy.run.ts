@@ -1,7 +1,5 @@
 import alchemy from "alchemy";
-import { Vite } from "alchemy/cloudflare";
-import { Worker } from "alchemy/cloudflare";
-import { D1Database } from "alchemy/cloudflare";
+import { D1Database, Queue, Vite, Worker } from "alchemy/cloudflare";
 import { config } from "dotenv";
 
 config({ path: "../../.env" });
@@ -14,6 +12,10 @@ const app = await alchemy("email-relay");
 const db = await D1Database("database", {
   adopt: true,
   migrationsDir: "../../packages/db/src/migrations",
+});
+
+const mailSyncQueue = await Queue("mail-sync", {
+  name: "email-relay-mail-sync",
 });
 
 export const web = await Vite("web", {
@@ -32,6 +34,7 @@ export const server = await Worker("server", {
   compatibility: "node",
   bindings: {
     DB: db,
+    MAIL_SYNC_QUEUE: mailSyncQueue,
     CORS_ORIGIN: alchemy.env.CORS_ORIGIN!,
     BETTER_AUTH_SECRET: alchemy.secret.env.BETTER_AUTH_SECRET!,
     BETTER_AUTH_URL: alchemy.env.BETTER_AUTH_URL!,
@@ -44,6 +47,16 @@ export const server = await Worker("server", {
     GOOGLE_GMAIL_PUBSUB_TOPIC: alchemy.env.GOOGLE_GMAIL_PUBSUB_TOPIC!,
     GOOGLE_GMAIL_PUSH_TOKEN: alchemy.secret.env.GOOGLE_GMAIL_PUSH_TOKEN!,
   },
+  eventSources: [
+    {
+      queue: mailSyncQueue,
+      settings: {
+        batchSize: 10,
+        maxRetries: 5,
+        retryDelay: 30,
+      },
+    },
+  ],
   dev: {
     port: 3000,
   },

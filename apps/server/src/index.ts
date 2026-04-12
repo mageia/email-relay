@@ -19,6 +19,7 @@ import {
   parseOauthState,
   signOauthState,
 } from "@email-relay/mail";
+import { handleMailQueue } from "./mail/queue";
 import { OpenAPIHandler } from "@orpc/openapi/fetch";
 import { OpenAPIReferencePlugin } from "@orpc/openapi/plugins";
 import { onError } from "@orpc/server";
@@ -148,6 +149,12 @@ app.get("/oauth/gmail/callback", async (c) => {
     tokenType: tokens.token_type,
   });
 
+  await c.env.MAIL_SYNC_QUEUE.send({
+    provider: "gmail",
+    mailboxId: mailboxRecord.id,
+    reason: "gmail-initial",
+  });
+
   return c.redirect(`${c.env.CORS_ORIGIN}/mailboxes/${mailboxRecord.id}`);
 });
 
@@ -200,4 +207,7 @@ app.get("/", (c) => {
   return c.text("OK");
 });
 
-export default app;
+export default {
+  fetch: app.fetch,
+  queue: handleMailQueue,
+};
