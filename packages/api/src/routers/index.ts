@@ -5,12 +5,14 @@ import { adminRouter } from "./admin";
 import { alertsRouter } from "./alerts";
 import { groupsRouter } from "./groups";
 import { inboxRouter } from "./inbox";
+import { mailboxesRouter } from "./mailboxes";
 
 export const appRouter = {
   admin: adminRouter,
   inbox: inboxRouter,
   groups: groupsRouter,
   alerts: alertsRouter,
+  mailboxes: mailboxesRouter,
   healthCheck: publicProcedure.handler(() => {
     return "OK";
   }),

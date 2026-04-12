@@ -5,9 +5,20 @@ import {
   parseAdminSessionCookie,
 } from "@email-relay/api/admin-auth/cookie";
 import { loginAdmin, logoutAdmin } from "@email-relay/api/admin-auth/service";
+import { createMailboxRepository } from "@email-relay/api/mailboxes/repository";
 import { appRouter } from "@email-relay/api/routers/index";
 import { createAuth } from "@email-relay/auth";
+import { createDb } from "@email-relay/db";
 import { env } from "@email-relay/env/server";
+import {
+  buildGoogleAuthUrl,
+  createMailboxCredentialStore,
+  exchangeGoogleCode,
+  getGoogleProfile,
+  listGoogleLabels,
+  parseOauthState,
+  signOauthState,
+} from "@email-relay/mail";
 import { OpenAPIHandler } from "@orpc/openapi/fetch";
 import { OpenAPIReferencePlugin } from "@orpc/openapi/plugins";
 import { onError } from "@orpc/server";
@@ -18,7 +29,7 @@ import { cors } from "hono/cors";
 import { logger } from "hono/logger";
 import { z } from "zod";
 
-const app = new Hono();
+const app = new Hono<{ Bindings: Env }>();
 
 app.use(logger());
 app.use(
@@ -82,6 +93,62 @@ app.get("/admin/session", async (c) => {
     authenticated: true,
     expiresAt: context.adminSession.expiresAt.toISOString(),
   });
+});
+
+app.get("/oauth/gmail/start", async (c) => {
+  const state = await signOauthState(c.env.MAILBOX_OAUTH_STATE_SECRET, {
+    provider: "gmail",
+    redirectTo: c.req.query("redirectTo") ?? "/mailboxes",
+  });
+
+  return c.redirect(
+    buildGoogleAuthUrl({
+      clientId: c.env.GOOGLE_CLIENT_ID,
+      redirectUri: c.env.GOOGLE_OAUTH_REDIRECT_URL,
+      state,
+    }),
+  );
+});
+
+app.get("/oauth/gmail/callback", async (c) => {
+  const code = c.req.query("code");
+  const state = c.req.query("state");
+  if (!code || !state) {
+    return c.text("Missing Gmail OAuth callback params", 400);
+  }
+
+  await parseOauthState(c.env.MAILBOX_OAUTH_STATE_SECRET, state);
+
+  const tokens = await exchangeGoogleCode({
+    code,
+    clientId: c.env.GOOGLE_CLIENT_ID,
+    clientSecret: c.env.GOOGLE_CLIENT_SECRET,
+    redirectUri: c.env.GOOGLE_OAUTH_REDIRECT_URL,
+  });
+
+  const profile = await getGoogleProfile(tokens.access_token);
+  const labels = await listGoogleLabels(tokens.access_token);
+  const db = createDb();
+  const mailboxRepository = createMailboxRepository(db);
+  const credentialStore = createMailboxCredentialStore(db, c.env.MAILBOX_CREDENTIALS_SECRET);
+
+  const selectedLabels = labels.filter((label) => label.id === "INBOX");
+  const mailboxRecord = await mailboxRepository.createGmailMailbox({
+    address: profile.emailAddress,
+    selectedLabels,
+  });
+
+  await credentialStore.saveOauthTokens({
+    mailboxId: mailboxRecord.id,
+    provider: "gmail",
+    accessToken: tokens.access_token,
+    refreshToken: tokens.refresh_token,
+    expiresAt: new Date(Date.now() + tokens.expires_in * 1000),
+    scope: tokens.scope,
+    tokenType: tokens.token_type,
+  });
+
+  return c.redirect(`${c.env.CORS_ORIGIN}/mailboxes/${mailboxRecord.id}`);
 });
 
 export const apiHandler = new OpenAPIHandler(appRouter, {

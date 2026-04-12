@@ -18,6 +18,8 @@ import { Route as ProtectedMailboxesRouteImport } from './routes/_protected/mail
 import { Route as ProtectedInboxRouteImport } from './routes/_protected/inbox'
 import { Route as ProtectedGroupsRouteImport } from './routes/_protected/groups'
 import { Route as ProtectedAlertsRouteImport } from './routes/_protected/alerts'
+import { Route as ProtectedMailboxesConnectRouteImport } from './routes/_protected/mailboxes/connect'
+import { Route as ProtectedMailboxesMailboxIdRouteImport } from './routes/_protected/mailboxes/$mailboxId'
 
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
@@ -63,6 +65,18 @@ const ProtectedAlertsRoute = ProtectedAlertsRouteImport.update({
   path: '/alerts',
   getParentRoute: () => ProtectedRoute,
 } as any)
+const ProtectedMailboxesConnectRoute =
+  ProtectedMailboxesConnectRouteImport.update({
+    id: '/connect',
+    path: '/connect',
+    getParentRoute: () => ProtectedMailboxesRoute,
+  } as any)
+const ProtectedMailboxesMailboxIdRoute =
+  ProtectedMailboxesMailboxIdRouteImport.update({
+    id: '/$mailboxId',
+    path: '/$mailboxId',
+    getParentRoute: () => ProtectedMailboxesRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -71,8 +85,10 @@ export interface FileRoutesByFullPath {
   '/alerts': typeof ProtectedAlertsRoute
   '/groups': typeof ProtectedGroupsRoute
   '/inbox': typeof ProtectedInboxRoute
-  '/mailboxes': typeof ProtectedMailboxesRoute
+  '/mailboxes': typeof ProtectedMailboxesRouteWithChildren
   '/settings': typeof ProtectedSettingsRoute
+  '/mailboxes/$mailboxId': typeof ProtectedMailboxesMailboxIdRoute
+  '/mailboxes/connect': typeof ProtectedMailboxesConnectRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -81,8 +97,10 @@ export interface FileRoutesByTo {
   '/alerts': typeof ProtectedAlertsRoute
   '/groups': typeof ProtectedGroupsRoute
   '/inbox': typeof ProtectedInboxRoute
-  '/mailboxes': typeof ProtectedMailboxesRoute
+  '/mailboxes': typeof ProtectedMailboxesRouteWithChildren
   '/settings': typeof ProtectedSettingsRoute
+  '/mailboxes/$mailboxId': typeof ProtectedMailboxesMailboxIdRoute
+  '/mailboxes/connect': typeof ProtectedMailboxesConnectRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -93,8 +111,10 @@ export interface FileRoutesById {
   '/_protected/alerts': typeof ProtectedAlertsRoute
   '/_protected/groups': typeof ProtectedGroupsRoute
   '/_protected/inbox': typeof ProtectedInboxRoute
-  '/_protected/mailboxes': typeof ProtectedMailboxesRoute
+  '/_protected/mailboxes': typeof ProtectedMailboxesRouteWithChildren
   '/_protected/settings': typeof ProtectedSettingsRoute
+  '/_protected/mailboxes/$mailboxId': typeof ProtectedMailboxesMailboxIdRoute
+  '/_protected/mailboxes/connect': typeof ProtectedMailboxesConnectRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -107,6 +127,8 @@ export interface FileRouteTypes {
     | '/inbox'
     | '/mailboxes'
     | '/settings'
+    | '/mailboxes/$mailboxId'
+    | '/mailboxes/connect'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -117,6 +139,8 @@ export interface FileRouteTypes {
     | '/inbox'
     | '/mailboxes'
     | '/settings'
+    | '/mailboxes/$mailboxId'
+    | '/mailboxes/connect'
   id:
     | '__root__'
     | '/'
@@ -128,6 +152,8 @@ export interface FileRouteTypes {
     | '/_protected/inbox'
     | '/_protected/mailboxes'
     | '/_protected/settings'
+    | '/_protected/mailboxes/$mailboxId'
+    | '/_protected/mailboxes/connect'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -202,14 +228,41 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProtectedAlertsRouteImport
       parentRoute: typeof ProtectedRoute
     }
+    '/_protected/mailboxes/connect': {
+      id: '/_protected/mailboxes/connect'
+      path: '/connect'
+      fullPath: '/mailboxes/connect'
+      preLoaderRoute: typeof ProtectedMailboxesConnectRouteImport
+      parentRoute: typeof ProtectedMailboxesRoute
+    }
+    '/_protected/mailboxes/$mailboxId': {
+      id: '/_protected/mailboxes/$mailboxId'
+      path: '/$mailboxId'
+      fullPath: '/mailboxes/$mailboxId'
+      preLoaderRoute: typeof ProtectedMailboxesMailboxIdRouteImport
+      parentRoute: typeof ProtectedMailboxesRoute
+    }
   }
 }
+
+interface ProtectedMailboxesRouteChildren {
+  ProtectedMailboxesMailboxIdRoute: typeof ProtectedMailboxesMailboxIdRoute
+  ProtectedMailboxesConnectRoute: typeof ProtectedMailboxesConnectRoute
+}
+
+const ProtectedMailboxesRouteChildren: ProtectedMailboxesRouteChildren = {
+  ProtectedMailboxesMailboxIdRoute: ProtectedMailboxesMailboxIdRoute,
+  ProtectedMailboxesConnectRoute: ProtectedMailboxesConnectRoute,
+}
+
+const ProtectedMailboxesRouteWithChildren =
+  ProtectedMailboxesRoute._addFileChildren(ProtectedMailboxesRouteChildren)
 
 interface ProtectedRouteChildren {
   ProtectedAlertsRoute: typeof ProtectedAlertsRoute
   ProtectedGroupsRoute: typeof ProtectedGroupsRoute
   ProtectedInboxRoute: typeof ProtectedInboxRoute
-  ProtectedMailboxesRoute: typeof ProtectedMailboxesRoute
+  ProtectedMailboxesRoute: typeof ProtectedMailboxesRouteWithChildren
   ProtectedSettingsRoute: typeof ProtectedSettingsRoute
 }
 
@@ -217,7 +270,7 @@ const ProtectedRouteChildren: ProtectedRouteChildren = {
   ProtectedAlertsRoute: ProtectedAlertsRoute,
   ProtectedGroupsRoute: ProtectedGroupsRoute,
   ProtectedInboxRoute: ProtectedInboxRoute,
-  ProtectedMailboxesRoute: ProtectedMailboxesRoute,
+  ProtectedMailboxesRoute: ProtectedMailboxesRouteWithChildren,
   ProtectedSettingsRoute: ProtectedSettingsRoute,
 }
 
