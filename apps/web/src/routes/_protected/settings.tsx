@@ -37,24 +37,31 @@ export function SettingsPage() {
     <div className="rounded-xl border p-4 space-y-4">
       <div>
         <h1 className="mb-2 text-2xl font-semibold">设置</h1>
-        <p className="text-sm text-muted-foreground">这里用于查看当前管理员会话与控制面状态。</p>
+        <p className="text-sm text-muted-foreground">本页用于查看当前管理员会话与控制面状态。</p>
       </div>
 
       {state.status === "loading" ? (
-        <p className="text-sm text-muted-foreground">管理员会话加载中...</p>
+        <p className="text-sm text-muted-foreground" data-testid="session-loading">
+          管理员会话加载中...
+        </p>
       ) : state.session ? (
-        <div className="space-y-2 text-sm">
+        <div className="space-y-2 text-sm" data-testid="session-authenticated">
           <div>
             <span className="font-medium">认证状态：</span>
             <span>已认证</span>
           </div>
           <div>
             <span className="font-medium">会话过期时间：</span>
-            <span>{new Date(state.session.expiresAt).toLocaleString("zh-CN", { hour12: false })}</span>
+            <time
+              aria-label="会话过期时间"
+              dateTime={state.session.expiresAt}
+            >
+              {new Date(state.session.expiresAt).toLocaleString("zh-CN", { hour12: false })}
+            </time>
           </div>
         </div>
       ) : (
-        <div className="space-y-2 text-sm text-muted-foreground">
+        <div className="space-y-2 text-sm text-muted-foreground" data-testid="session-unauthenticated">
           <p>未检测到管理员会话</p>
           <p>请重新登录以继续管理邮箱同步系统。</p>
         </div>

@@ -1,50 +1,62 @@
-import { render, screen, waitFor } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { act, render, screen } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { SettingsPage } from "./settings";
+import type { AdminSession } from "@/lib/admin-session";
 
-const getAdminSessionMock = vi.fn();
+const getAdminSessionMock = vi.fn<() => Promise<AdminSession | null>>();
 
 vi.mock("@/lib/admin-session", () => ({
   getAdminSession: () => getAdminSessionMock(),
 }));
 
 describe("SettingsPage", () => {
-  beforeEach(() => {
+  afterEach(() => {
     getAdminSessionMock.mockReset();
   });
 
-  it("shows a loading state before the session request resolves", () => {
-    getAdminSessionMock.mockReturnValue(new Promise(() => undefined));
+  it("shows a loading indicator before the session is resolved", async () => {
+    let resolvePromise: ((value: AdminSession | null) => void) | undefined;
+    const pendingPromise = new Promise<AdminSession | null>((resolve) => {
+      resolvePromise = resolve;
+    });
+
+    getAdminSessionMock.mockReturnValueOnce(pendingPromise);
 
     render(<SettingsPage />);
 
-    expect(screen.getByText("管理员会话加载中...")).toBeInTheDocument();
+    expect(screen.getByTestId("session-loading")).toBeInTheDocument();
+
+    await act(async () => {
+      resolvePromise?.(null);
+      await pendingPromise;
+    });
+
+    expect(screen.getByTestId("session-unauthenticated")).toBeInTheDocument();
   });
 
-  it("renders authenticated session details", async () => {
-    getAdminSessionMock.mockResolvedValue({
+  it("shows the unauthenticated state when there is no session", async () => {
+    getAdminSessionMock.mockResolvedValueOnce(null);
+
+    render(<SettingsPage />);
+
+    expect(await screen.findByTestId("session-unauthenticated")).toBeInTheDocument();
+    expect(screen.getByText("请重新登录以继续管理邮箱同步系统。")).toBeInTheDocument();
+  });
+
+  it("renders authenticated session details when available", async () => {
+    const session: AdminSession = {
       authenticated: true,
-      expiresAt: "2026-04-13T08:00:00.000Z",
-    });
+      expiresAt: "2026-01-01T12:30:00Z",
+    };
+
+    getAdminSessionMock.mockResolvedValueOnce(session);
 
     render(<SettingsPage />);
 
-    await waitFor(() => {
-      expect(screen.getByText("已认证")).toBeInTheDocument();
-    });
-    expect(screen.getByText(/2026/)).toBeInTheDocument();
-    expect(screen.getByText("这里用于查看当前管理员会话与控制面状态。") ).toBeInTheDocument();
-  });
-
-  it("renders an explicit unauthenticated state", async () => {
-    getAdminSessionMock.mockResolvedValue(null);
-
-    render(<SettingsPage />);
-
-    await waitFor(() => {
-      expect(screen.getByText("未检测到管理员会话")).toBeInTheDocument();
-    });
-    expect(screen.getByText("请重新登录以继续管理邮箱同步系统。" )).toBeInTheDocument();
+    expect(await screen.findByText("认证状态：")).toBeInTheDocument();
+    expect(screen.getByText("已认证")).toBeInTheDocument();
+    expect(screen.getByLabelText("会话过期时间")).toHaveAttribute("dateTime", session.expiresAt);
+    expect(screen.getByText(/本页用于/)).toBeInTheDocument();
   });
 });
