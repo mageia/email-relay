@@ -29,6 +29,13 @@
       "when": 1775980738775,
       "tag": "0003_amazing_goblin_queen",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1775982352814,
+      "tag": "0004_daily_kat_farrell",
+      "breakpoints": true
     }
   ]
 }

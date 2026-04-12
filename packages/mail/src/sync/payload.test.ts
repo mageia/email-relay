@@ -14,3 +14,14 @@ describe("MailSyncPayloadSchema", () => {
     ).toMatchObject({ provider: "gmail", mailboxId: "mailbox-1" });
   });
 });
+
+it("accepts an Outlook delta payload", () => {
+  expect(
+    MailSyncPayloadSchema.parse({
+      provider: "outlook",
+      mailboxId: "mailbox-2",
+      reason: "outlook-delta",
+      deltaLink: "https://graph.microsoft.com/v1.0/me/messages/delta?...",
+    }),
+  ).toMatchObject({ provider: "outlook", mailboxId: "mailbox-2" });
+});
