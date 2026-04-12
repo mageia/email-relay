@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 
 import ConnectGmailButton from "@/components/connect-gmail-button";
+import ConnectOutlookButton from "@/components/connect-outlook-button";
 import MailboxStatusCard from "@/components/mailbox-status-card";
 import { orpc } from "@/utils/orpc";
 
@@ -17,9 +18,12 @@ function MailboxesPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold">邮箱</h1>
-          <p className="text-sm text-muted-foreground">先接入 Gmail，后续再补 Outlook 和 IMAP。</p>
+          <p className="text-sm text-muted-foreground">先接入 Gmail / Outlook，后续再补 IMAP。</p>
         </div>
-        <ConnectGmailButton />
+        <div className="flex gap-3">
+          <ConnectGmailButton />
+          <ConnectOutlookButton />
+        </div>
       </div>
       <div className="grid gap-4">
         {(mailboxes.data ?? []).map(

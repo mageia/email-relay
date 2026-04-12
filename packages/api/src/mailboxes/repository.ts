@@ -1,9 +1,11 @@
 import { desc, eq } from "drizzle-orm";
 
 import { mailbox } from "@email-relay/db/schema/mail";
+import { outlookMailboxState } from "@email-relay/db/schema/outlook";
 import { gmailMailboxState, mailboxFolder } from "@email-relay/db/schema/provider";
 
 type GmailLabel = { id: string; name: string; kind: string };
+type OutlookFolder = { id: string; name: string; kind: string; selected: boolean };
 
 type MailboxRepositoryDeps =
   | any
@@ -78,6 +80,67 @@ export function createMailboxRepository(db: MailboxRepositoryDeps) {
       await db.insert(gmailMailboxState).values({
         mailboxId: createdMailbox.id,
         gmailAddress: input.address,
+      });
+
+      return createdMailbox;
+    },
+
+    async createOutlookMailbox(input: {
+      address: string;
+      selectedFolders: OutlookFolder[];
+    }) {
+      if (isStubDeps(db)) {
+        const createdMailbox = {
+          id: crypto.randomUUID(),
+          address: input.address,
+          provider: "outlook",
+          authType: "oauth",
+          status: "active",
+          selectedFoldersJson: JSON.stringify(
+            input.selectedFolders.filter((folder) => folder.selected).map((folder) => folder.id),
+          ),
+        };
+
+        await db.insertMailbox(createdMailbox);
+        await db.insertFolders(
+          input.selectedFolders.map((folder) => ({
+            mailboxId: createdMailbox.id,
+            providerFolderId: folder.id,
+            displayName: folder.name,
+            kind: folder.kind,
+            selected: folder.selected,
+          })),
+        );
+
+        return createdMailbox;
+      }
+
+      const [createdMailbox] = await db
+        .insert(mailbox)
+        .values({
+          address: input.address,
+          provider: "outlook",
+          authType: "oauth",
+          status: "active",
+          selectedFoldersJson: JSON.stringify(
+            input.selectedFolders.filter((folder) => folder.selected).map((folder) => folder.id),
+          ),
+        })
+        .returning();
+
+      await db.insert(mailboxFolder).values(
+        input.selectedFolders.map((folder) => ({
+          mailboxId: createdMailbox.id,
+          providerFolderId: folder.id,
+          displayName: folder.name,
+          kind: folder.kind,
+          selected: folder.selected,
+        })),
+      );
+
+      await db.insert(outlookMailboxState).values({
+        mailboxId: createdMailbox.id,
+        outlookAddress: input.address,
       });
 
       return createdMailbox;

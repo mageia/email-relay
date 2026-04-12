@@ -12,13 +12,19 @@ import { createDb } from "@email-relay/db";
 import { env } from "@email-relay/env/server";
 import {
   buildGoogleAuthUrl,
+  buildOutlookAuthUrl,
   createMailboxCredentialStore,
-  startGmailWatch,
   exchangeGoogleCode,
+  exchangeOutlookCode,
+  getOutlookProfile,
   getGoogleProfile,
+  listOutlookFolders,
   listGoogleLabels,
+  parseOutlookOauthState,
   parseOauthState,
+  signOutlookOauthState,
   signOauthState,
+  startGmailWatch,
 } from "@email-relay/mail";
 import { gmailMailboxState } from "@email-relay/db/schema/provider";
 import { handleMailQueue } from "./mail/queue";
@@ -183,6 +189,66 @@ app.get("/oauth/gmail/callback", async (c) => {
     provider: "gmail",
     mailboxId: mailboxRecord.id,
     reason: "gmail-initial",
+  });
+
+  return c.redirect(`${c.env.CORS_ORIGIN}/mailboxes/${mailboxRecord.id}`);
+});
+
+app.get("/oauth/outlook/start", async (c) => {
+  const state = await signOutlookOauthState(c.env.MAILBOX_OAUTH_STATE_SECRET, {
+    provider: "outlook",
+    redirectTo: c.req.query("redirectTo") ?? "/mailboxes",
+  });
+
+  return c.redirect(
+    buildOutlookAuthUrl({
+      clientId: c.env.MICROSOFT_CLIENT_ID,
+      redirectUri: c.env.MICROSOFT_OAUTH_REDIRECT_URL,
+      state,
+    }),
+  );
+});
+
+app.get("/oauth/outlook/callback", async (c) => {
+  const code = c.req.query("code");
+  const state = c.req.query("state");
+  if (!code || !state) {
+    return c.text("Missing Outlook OAuth params", 400);
+  }
+
+  await parseOutlookOauthState(c.env.MAILBOX_OAUTH_STATE_SECRET, state);
+
+  const tokens = await exchangeOutlookCode({
+    code,
+    clientId: c.env.MICROSOFT_CLIENT_ID,
+    clientSecret: c.env.MICROSOFT_CLIENT_SECRET,
+    redirectUri: c.env.MICROSOFT_OAUTH_REDIRECT_URL,
+  });
+
+  const profile = await getOutlookProfile(tokens.access_token);
+  const folders = await listOutlookFolders(tokens.access_token);
+  const db = createDb();
+  const mailboxRepository = createMailboxRepository(db);
+  const credentialStore = createMailboxCredentialStore(db, c.env.MAILBOX_CREDENTIALS_SECRET);
+  const mailboxRecord = await mailboxRepository.createOutlookMailbox({
+    address: profile.emailAddress,
+    selectedFolders: folders,
+  });
+
+  await credentialStore.saveOauthTokens({
+    mailboxId: mailboxRecord.id,
+    provider: "outlook",
+    accessToken: tokens.access_token,
+    refreshToken: tokens.refresh_token,
+    expiresAt: new Date(Date.now() + tokens.expires_in * 1000),
+    scope: tokens.scope,
+    tokenType: tokens.token_type,
+  });
+
+  await c.env.MAIL_SYNC_QUEUE.send({
+    provider: "outlook",
+    mailboxId: mailboxRecord.id,
+    reason: "outlook-initial",
   });
 
   return c.redirect(`${c.env.CORS_ORIGIN}/mailboxes/${mailboxRecord.id}`);

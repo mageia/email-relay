@@ -14,11 +14,11 @@ function MailboxDetailPage() {
   const mailbox = mailboxes.data?.find((entry: { id: string }) => entry.id === mailboxId);
 
   const selectedLabels =
-    mailbox && mailbox.provider === "gmail"
+    mailbox && (mailbox.provider === "gmail" || mailbox.provider === "outlook")
       ? JSON.parse((mailbox.selectedFoldersJson as string | undefined) ?? "[]").map((labelId: string) => ({
           id: labelId,
           name: labelId,
-          kind: "system",
+          kind: mailbox.provider === "gmail" ? "system" : "folder",
         }))
       : [];
 
