@@ -14,6 +14,7 @@ export * from "./outlook/message";
 export * from "./outlook/oauth";
 export * from "./outlook/oauth-state";
 export * from "./outlook/profile";
+export * from "./outlook/subscription";
 export * from "./storage/mailbox-credentials";
 export * from "./storage/message-upserts";
 export * from "./sync/payload";

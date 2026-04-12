@@ -3,6 +3,7 @@ import { mailbox } from "@email-relay/db/schema/mail";
 import { outlookMailboxState } from "@email-relay/db/schema/outlook";
 import { gmailMailboxState } from "@email-relay/db/schema/provider";
 import {
+  createOutlookSubscription,
   extractHistoryMessageIds,
   getOutlookDeltaPage,
   getGmailHistoryPage,
@@ -89,6 +90,38 @@ export async function handleMailQueue(batch: MessageBatch<unknown>, env: Env) {
       const credentials = await credentialStore.readOauthTokens(payload.mailboxId);
       if (!credentials?.accessToken) {
         throw new Error(`Missing Outlook credentials for ${payload.mailboxId}`);
+      }
+
+      if (payload.reason === "outlook-renew-subscription") {
+        const renewed = await createOutlookSubscription(credentials.accessToken, {
+          notificationUrl: `${env.BETTER_AUTH_URL}/webhooks/outlook/notifications`,
+          clientState: env.MICROSOFT_NOTIFICATION_SECRET,
+          resource: "/me/messages",
+          expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+        });
+
+        await db
+          .insert(outlookMailboxState)
+          .values({
+            mailboxId: payload.mailboxId,
+            outlookAddress: mailboxRow.address,
+            subscriptionId: renewed.id,
+            subscriptionResource: renewed.resource,
+            subscriptionExpiresAt: new Date(renewed.expirationDateTime),
+          })
+          .onConflictDoUpdate({
+            target: outlookMailboxState.mailboxId,
+            set: {
+              outlookAddress: mailboxRow.address,
+              subscriptionId: renewed.id,
+              subscriptionResource: renewed.resource,
+              subscriptionExpiresAt: new Date(renewed.expirationDateTime),
+              updatedAt: new Date(),
+            },
+          });
+
+        message.ack();
+        continue;
       }
 
       const deltaPage = await getOutlookDeltaPage({

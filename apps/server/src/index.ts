@@ -13,6 +13,7 @@ import { env } from "@email-relay/env/server";
 import {
   buildGoogleAuthUrl,
   buildOutlookAuthUrl,
+  createOutlookSubscription,
   createMailboxCredentialStore,
   exchangeGoogleCode,
   exchangeOutlookCode,
@@ -26,9 +27,11 @@ import {
   signOauthState,
   startGmailWatch,
 } from "@email-relay/mail";
+import { outlookMailboxState } from "@email-relay/db/schema/outlook";
 import { gmailMailboxState } from "@email-relay/db/schema/provider";
 import { handleMailQueue } from "./mail/queue";
 import { handleGmailWebhook } from "./mail/gmail-webhook";
+import { handleOutlookWebhook } from "./mail/outlook-webhook";
 import { handleScheduled } from "./mail/scheduled";
 import { OpenAPIHandler } from "@orpc/openapi/fetch";
 import { OpenAPIReferencePlugin } from "@orpc/openapi/plugins";
@@ -245,6 +248,33 @@ app.get("/oauth/outlook/callback", async (c) => {
     tokenType: tokens.token_type,
   });
 
+  const subscription = await createOutlookSubscription(tokens.access_token, {
+    notificationUrl: `${c.env.BETTER_AUTH_URL}/webhooks/outlook/notifications`,
+    clientState: c.env.MICROSOFT_NOTIFICATION_SECRET,
+    resource: "/me/messages",
+    expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+  });
+
+  await db
+    .insert(outlookMailboxState)
+    .values({
+      mailboxId: mailboxRecord.id,
+      outlookAddress: profile.emailAddress,
+      subscriptionId: subscription.id,
+      subscriptionResource: subscription.resource,
+      subscriptionExpiresAt: new Date(subscription.expirationDateTime),
+    })
+    .onConflictDoUpdate({
+      target: outlookMailboxState.mailboxId,
+      set: {
+        outlookAddress: profile.emailAddress,
+        subscriptionId: subscription.id,
+        subscriptionResource: subscription.resource,
+        subscriptionExpiresAt: new Date(subscription.expirationDateTime),
+        updatedAt: new Date(),
+      },
+    });
+
   await c.env.MAIL_SYNC_QUEUE.send({
     provider: "outlook",
     mailboxId: mailboxRecord.id,
@@ -255,6 +285,7 @@ app.get("/oauth/outlook/callback", async (c) => {
 });
 
 app.post("/webhooks/gmail/push", async (c) => handleGmailWebhook(c.req.raw, c.env));
+app.all("/webhooks/outlook/notifications", async (c) => handleOutlookWebhook(c.req.raw, c.env));
 
 export const apiHandler = new OpenAPIHandler(appRouter, {
   plugins: [

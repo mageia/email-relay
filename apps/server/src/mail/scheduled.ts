@@ -1,4 +1,5 @@
 import { createDb } from "@email-relay/db";
+import { outlookMailboxState } from "@email-relay/db/schema/outlook";
 import { gmailMailboxState } from "@email-relay/db/schema/provider";
 
 export async function handleScheduled(_controller: ScheduledController, env: Env) {
@@ -35,6 +36,27 @@ export async function handleScheduled(_controller: ScheduledController, env: Env
         mailboxId: state.mailboxId,
         reason: "gmail-history",
         historyId: state.lastHistoryId,
+      });
+    }
+  }
+
+  const outlookStates = await db.select().from(outlookMailboxState);
+  const subscriptionRenewBeforeMs = 12 * 60 * 60 * 1000;
+
+  for (const state of outlookStates as Array<{
+    mailboxId: string;
+    subscriptionExpiresAt?: Date | null;
+    deltaLink?: string | null;
+  }>) {
+    if (
+      !state.subscriptionExpiresAt ||
+      state.subscriptionExpiresAt.getTime() <= now + subscriptionRenewBeforeMs
+    ) {
+      await env.MAIL_SYNC_QUEUE.send({
+        provider: "outlook",
+        mailboxId: state.mailboxId,
+        reason: "outlook-renew-subscription",
+        deltaLink: state.deltaLink ?? undefined,
       });
     }
   }
