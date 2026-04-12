@@ -1,12 +1,15 @@
 import { createDb } from "@email-relay/db";
 import { mailbox } from "@email-relay/db/schema/mail";
+import { outlookMailboxState } from "@email-relay/db/schema/outlook";
 import { gmailMailboxState } from "@email-relay/db/schema/provider";
 import {
   extractHistoryMessageIds,
+  getOutlookDeltaPage,
   getGmailHistoryPage,
   MailSyncPayloadSchema,
   createMailboxCredentialStore,
   normalizeGmailMessage,
+  normalizeOutlookMessage,
   startGmailWatch,
   upsertNormalizedMessage,
 } from "@email-relay/mail";
@@ -74,6 +77,68 @@ export async function handleMailQueue(batch: MessageBatch<unknown>, env: Env) {
 
   for (const message of batch.messages) {
     const payload = MailSyncPayloadSchema.parse(message.body);
+    if (payload.provider === "outlook") {
+      const mailboxes = await db.select().from(mailbox);
+      const mailboxRow = mailboxes.find((entry: { id: string }) => entry.id === payload.mailboxId);
+
+      if (!mailboxRow) {
+        message.ack();
+        continue;
+      }
+
+      const credentials = await credentialStore.readOauthTokens(payload.mailboxId);
+      if (!credentials?.accessToken) {
+        throw new Error(`Missing Outlook credentials for ${payload.mailboxId}`);
+      }
+
+      const deltaPage = await getOutlookDeltaPage({
+        accessToken: credentials.accessToken,
+        deltaLink: payload.deltaLink,
+      });
+
+      for (const graphMessage of deltaPage.value) {
+        if (!graphMessage.id) {
+          continue;
+        }
+
+        const normalized = normalizeOutlookMessage(graphMessage);
+        await upsertNormalizedMessage(db, {
+          mailboxId: payload.mailboxId,
+          ...normalized,
+        });
+      }
+
+      await db
+        .insert(outlookMailboxState)
+        .values({
+          mailboxId: payload.mailboxId,
+          outlookAddress: mailboxRow.address,
+          deltaLink: deltaPage["@odata.deltaLink"] ?? payload.deltaLink ?? null,
+          lastDeltaSyncAt: new Date(),
+        })
+        .onConflictDoUpdate({
+          target: outlookMailboxState.mailboxId,
+          set: {
+            outlookAddress: mailboxRow.address,
+            deltaLink: deltaPage["@odata.deltaLink"] ?? payload.deltaLink ?? null,
+            lastDeltaSyncAt: new Date(),
+            updatedAt: new Date(),
+          },
+        });
+
+      if (deltaPage["@odata.nextLink"]) {
+        await env.MAIL_SYNC_QUEUE.send({
+          provider: "outlook",
+          mailboxId: payload.mailboxId,
+          reason: "outlook-delta",
+          deltaLink: deltaPage["@odata.nextLink"],
+        });
+      }
+
+      message.ack();
+      continue;
+    }
+
     if (payload.provider !== "gmail") {
       message.ack();
       continue;
