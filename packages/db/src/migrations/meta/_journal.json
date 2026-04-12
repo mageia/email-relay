@@ -8,6 +8,41 @@
       "when": 1775962668360,
       "tag": "0000_demonic_moondragon",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1775978341113,
+      "tag": "0001_orange_satana",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1775978829544,
+      "tag": "0002_cheerful_agent_brand",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1775980738775,
+      "tag": "0003_amazing_goblin_queen",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1775982352814,
+      "tag": "0004_daily_kat_farrell",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1775983305867,
+      "tag": "0005_powerful_blackheart",
+      "breakpoints": true
     }
   ]
 }

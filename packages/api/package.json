@@ -9,17 +9,21 @@
       "default": "./src/*.ts"
     }
   },
-  "scripts": {},
+  "scripts": {
+    "test": "vitest run --config vitest.config.ts"
+  },
   "dependencies": {
     "@email-relay/auth": "workspace:*",
     "@email-relay/db": "workspace:*",
     "@email-relay/env": "workspace:*",
+    "@email-relay/mail": "workspace:*",
     "@orpc/client": "catalog:",
     "@orpc/openapi": "catalog:",
     "@orpc/server": "catalog:",
     "@orpc/zod": "catalog:",
     "dotenv": "catalog:",
-    "zod": "catalog:"
+    "zod": "catalog:",
+    "drizzle-orm": "^0.45.1"
   },
   "devDependencies": {
     "@email-relay/config": "workspace:*",
