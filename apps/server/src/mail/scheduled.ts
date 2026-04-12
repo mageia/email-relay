@@ -1,9 +1,10 @@
+import { eq, sql } from "drizzle-orm";
 import { createDb } from "@email-relay/db";
 import { imapMailboxState } from "@email-relay/db/schema/imap";
-import { mailbox, syncAlert } from "@email-relay/db/schema/mail";
+import { mailbox, syncJob } from "@email-relay/db/schema/mail";
 import { outlookMailboxState } from "@email-relay/db/schema/outlook";
 import { gmailMailboxState } from "@email-relay/db/schema/provider";
-import { toSyncAlertInput } from "@email-relay/api/operations/alerts";
+import { buildBackfillPayloads } from "@email-relay/mail";
 
 export async function handleScheduled(_controller: ScheduledController, env: Env) {
   const db = createDb();
@@ -73,24 +74,69 @@ export async function handleScheduled(_controller: ScheduledController, env: Env
     });
   }
 
-  const staleThreshold = Date.now() - 60 * 60 * 1000;
-  const mailboxes = await db.select().from(mailbox);
-  for (const row of mailboxes as Array<{
+  const retryJobs = await db
+    .select()
+    .from(syncJob)
+    .where(
+      eq(syncJob.status, "retry-scheduled"),
+      sql`${syncJob.nextAttemptAt} <= ${now}`,
+    );
+
+  for (const job of retryJobs as Array<{
     id: string;
-    groupId?: string | null;
-    lastSuccessfulSyncAt?: Date | null;
+    mailboxId?: string | null;
+    type: string;
+    requestedRangeStart?: Date | number | null;
+    requestedRangeEnd?: Date | number | null;
   }>) {
-    if (!row.lastSuccessfulSyncAt || row.lastSuccessfulSyncAt.getTime() >= staleThreshold) {
+    if (
+      job.type !== "history-backfill" ||
+      !job.mailboxId ||
+      !job.requestedRangeStart ||
+      !job.requestedRangeEnd
+    ) {
       continue;
     }
 
-    await db.insert(syncAlert).values(
-      toSyncAlertInput({
-        mailboxId: row.id,
-        groupId: row.groupId ?? undefined,
-        category: "stale-sync",
-        detail: "超过 1 小时没有成功同步",
-      }),
-    );
+    const mailboxRow = (
+      await db.select().from(mailbox).where(eq(mailbox.id, job.mailboxId)).limit(1)
+    )[0];
+    if (!mailboxRow) {
+      continue;
+    }
+
+    const rangeStart =
+      job.requestedRangeStart instanceof Date
+        ? job.requestedRangeStart
+        : new Date(job.requestedRangeStart);
+    const rangeEnd =
+      job.requestedRangeEnd instanceof Date
+        ? job.requestedRangeEnd
+        : new Date(job.requestedRangeEnd);
+    if (Number.isNaN(rangeStart.getTime()) || Number.isNaN(rangeEnd.getTime())) {
+      continue;
+    }
+
+    const [payload] = buildBackfillPayloads({
+      mailboxes: [
+        {
+          id: mailboxRow.id,
+          provider: mailboxRow.provider as "gmail" | "outlook" | "imap",
+        },
+      ],
+      rangeStart,
+      rangeEnd,
+    });
+
+    await env.MAIL_SYNC_QUEUE.send(payload);
+
+    await db
+      .update(syncJob)
+      .set({
+        status: "queued",
+        nextAttemptAt: null,
+        startedAt: null,
+      })
+      .where(eq(syncJob.id, job.id));
   }
 }
