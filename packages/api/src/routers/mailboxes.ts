@@ -1,11 +1,103 @@
+import { eq } from "drizzle-orm";
 import { z } from "zod";
 
-import { createMailboxCredentialStore, validateImapMailbox } from "@email-relay/mail";
+import { mailbox } from "@email-relay/db/schema/mail";
+import { mailboxFolder } from "@email-relay/db/schema/provider";
+import {
+  createMailboxCredentialStore,
+  listGoogleLabels,
+  validateImapMailbox,
+} from "@email-relay/mail";
+
 import { protectedProcedure } from "../index";
 import { createMailboxRepository } from "../mailboxes/repository";
 
+type MailboxFolderChoice = {
+  id: string;
+  name: string;
+  kind: string;
+  selected: boolean;
+};
+
+export async function resolveMailboxFolderChoices(input: {
+  mailbox: {
+    id: string;
+    provider: string;
+    selectedFoldersJson: string;
+  };
+  storedFolders: MailboxFolderChoice[];
+  loadGmailLabels?: () => Promise<Array<{ id: string; name: string; kind: string }>>;
+}): Promise<MailboxFolderChoice[]> {
+  if (input.mailbox.provider !== "gmail") {
+    return input.storedFolders;
+  }
+
+  if (!input.loadGmailLabels) {
+    throw new Error("Missing Gmail label loader");
+  }
+
+  const selectedIds = new Set<string>(JSON.parse(input.mailbox.selectedFoldersJson ?? "[]"));
+  const labels = await input.loadGmailLabels();
+
+  return labels.map((label) => ({
+    ...label,
+    selected: selectedIds.has(label.id),
+  }));
+}
+
 export const mailboxesRouter = {
   list: protectedProcedure.handler(({ context }) => createMailboxRepository(context.db).listMailboxes()),
+  getFolderChoices: protectedProcedure
+    .input(
+      z.object({
+        mailboxId: z.string().min(1),
+      }),
+    )
+    .handler(async ({ context, input }) => {
+      const [mailboxRow] = await context.db
+        .select({
+          id: mailbox.id,
+          provider: mailbox.provider,
+          selectedFoldersJson: mailbox.selectedFoldersJson,
+        })
+        .from(mailbox)
+        .where(eq(mailbox.id, input.mailboxId))
+        .limit(1);
+
+      if (!mailboxRow) {
+        throw new Error("Mailbox not found");
+      }
+
+      const storedFolders = await context.db
+        .select({
+          id: mailboxFolder.providerFolderId,
+          name: mailboxFolder.displayName,
+          kind: mailboxFolder.kind,
+          selected: mailboxFolder.selected,
+        })
+        .from(mailboxFolder)
+        .where(eq(mailboxFolder.mailboxId, input.mailboxId));
+
+      return resolveMailboxFolderChoices({
+        mailbox: mailboxRow,
+        storedFolders,
+        loadGmailLabels:
+          mailboxRow.provider === "gmail"
+            ? async () => {
+                const credentialStore = createMailboxCredentialStore(
+                  context.db,
+                  String(context.env.MAILBOX_CREDENTIALS_SECRET ?? ""),
+                );
+                const credentials = await credentialStore.readOauthTokens(input.mailboxId);
+                if (!credentials?.accessToken) {
+                  throw new Error(`Missing Gmail credentials for ${input.mailboxId}`);
+                }
+
+                return listGoogleLabels(credentials.accessToken);
+              }
+            : undefined,
+      });
+    }),
   validateImap: protectedProcedure
     .input(
       z.object({

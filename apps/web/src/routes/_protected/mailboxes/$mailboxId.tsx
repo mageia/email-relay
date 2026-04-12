@@ -1,10 +1,10 @@
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
+import { toast } from "sonner";
 
 import BackfillForm from "@/components/backfill-form";
 import GmailLabelSelector from "@/components/gmail-label-selector";
-import ImapSettingsForm from "@/components/imap-settings-form";
-import { client, orpc } from "@/utils/orpc";
+import { client, orpc, queryClient } from "@/utils/orpc";
 
 export const Route = createFileRoute("/_protected/mailboxes/$mailboxId")({
   component: MailboxDetailPage,
@@ -14,20 +14,26 @@ function MailboxDetailPage() {
   const { mailboxId } = Route.useParams();
   const mailboxes = useQuery(orpc.mailboxes.list.queryOptions());
   const mailbox = mailboxes.data?.find((entry: { id: string }) => entry.id === mailboxId);
+  const folderChoices = useQuery(orpc.mailboxes.getFolderChoices.queryOptions({ input: { mailboxId } }));
+  const saveFolders = useMutation({
+    mutationFn: async (labels: Array<{ id: string; name: string; kind: string }>) =>
+      client.mailboxes.updateSelectedFolders({
+        mailboxId,
+        labels,
+      }),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: orpc.mailboxes.list.queryKey() });
+      await queryClient.invalidateQueries({ queryKey: orpc.mailboxes.getFolderChoices.queryKey({ input: { mailboxId } }) });
+      toast.success("已更新同步标签/文件夹");
+    },
+  });
 
-  const selectedLabels =
-    mailbox && (mailbox.provider === "gmail" || mailbox.provider === "outlook" || mailbox.provider === "imap")
-      ? JSON.parse((mailbox.selectedFoldersJson as string | undefined) ?? "[]").map((labelId: string) => ({
-          id: labelId,
-          name: labelId,
-          kind:
-            mailbox.provider === "gmail"
-              ? "system"
-              : mailbox.provider === "outlook"
-                ? "folder"
-                : "imap-folder",
-        }))
-      : [];
+  const pickerTitle =
+    mailbox?.provider === "outlook"
+      ? "同步文件夹"
+      : mailbox?.provider === "imap"
+        ? "轮询文件夹"
+        : "同步标签";
 
   return (
     <div className="space-y-4">
@@ -49,10 +55,17 @@ function MailboxDetailPage() {
           }}
         />
       ) : null}
-      {mailbox?.provider === "imap" ? (
-        <ImapSettingsForm folders={selectedLabels} />
+      {folderChoices.isLoading ? (
+        <p className="text-sm text-muted-foreground">正在加载可选标签/文件夹...</p>
       ) : (
-        <GmailLabelSelector labels={selectedLabels} />
+        <GmailLabelSelector
+          title={pickerTitle}
+          labels={folderChoices.data ?? []}
+          isSaving={saveFolders.isPending}
+          onSave={async (labels) => {
+            await saveFolders.mutateAsync(labels);
+          }}
+        />
       )}
     </div>
   );
