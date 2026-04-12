@@ -1,13 +1,20 @@
 import { createDb } from "@email-relay/db";
 import { mailbox } from "@email-relay/db/schema/mail";
+import { gmailMailboxState } from "@email-relay/db/schema/provider";
 import {
+  extractHistoryMessageIds,
+  getGmailHistoryPage,
   MailSyncPayloadSchema,
   createMailboxCredentialStore,
   normalizeGmailMessage,
+  startGmailWatch,
   upsertNormalizedMessage,
 } from "@email-relay/mail";
 
-async function fetchGmailMessages(accessToken: string, labelIds: string[]) {
+async function fetchGmailMessages(
+  accessToken: string,
+  labelIds: string[],
+): Promise<Array<{ id: string; historyId?: string } & Record<string, unknown>>> {
   const query = new URL("https://gmail.googleapis.com/gmail/v1/users/me/messages");
   labelIds.forEach((labelId) => query.searchParams.append("labelIds", labelId));
   query.searchParams.set("maxResults", "50");
@@ -39,9 +46,26 @@ async function fetchGmailMessages(accessToken: string, labelIds: string[]) {
         throw new Error(`Gmail get failed: ${detailResponse.status}`);
       }
 
-      return detailResponse.json();
+      return (await detailResponse.json()) as { id: string; historyId?: string } & Record<string, unknown>;
     }),
   );
+}
+
+async function fetchGmailMessage(accessToken: string, id: string) {
+  const detailResponse = await fetch(
+    `https://gmail.googleapis.com/gmail/v1/users/me/messages/${id}?format=full`,
+    {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    },
+  );
+
+  if (!detailResponse.ok) {
+    throw new Error(`Gmail get failed: ${detailResponse.status}`);
+  }
+
+  return detailResponse.json();
 }
 
 export async function handleMailQueue(batch: MessageBatch<unknown>, env: Env) {
@@ -69,10 +93,97 @@ export async function handleMailQueue(batch: MessageBatch<unknown>, env: Env) {
     }
 
     const selectedLabels = JSON.parse(mailboxRow.selectedFoldersJson) as string[];
-    const gmailMessages = await fetchGmailMessages(
-      credentials.accessToken,
-      selectedLabels.length > 0 ? selectedLabels : ["INBOX"],
-    );
+    const effectiveLabels = selectedLabels.length > 0 ? selectedLabels : ["INBOX"];
+
+    if (payload.reason === "gmail-renew-watch") {
+      const watch = await startGmailWatch(
+        credentials.accessToken,
+        env.GOOGLE_GMAIL_PUBSUB_TOPIC,
+        effectiveLabels,
+      );
+
+      await db
+        .insert(gmailMailboxState)
+        .values({
+          mailboxId: payload.mailboxId,
+          gmailAddress: mailboxRow.address,
+          lastHistoryId: watch.historyId,
+          watchExpirationAt: new Date(Number(watch.expiration)),
+          watchStatus: "active",
+        })
+        .onConflictDoUpdate({
+          target: gmailMailboxState.mailboxId,
+          set: {
+            gmailAddress: mailboxRow.address,
+            lastHistoryId: watch.historyId,
+            watchExpirationAt: new Date(Number(watch.expiration)),
+            watchStatus: "active",
+            updatedAt: new Date(),
+          },
+        });
+
+      message.ack();
+      continue;
+    }
+
+    if (payload.reason === "gmail-history") {
+      const states = await db.select().from(gmailMailboxState);
+      const state = states.find((entry: { mailboxId: string; lastHistoryId?: string | null }) => entry.mailboxId === payload.mailboxId);
+      const startHistoryId = payload.historyId ?? state?.lastHistoryId;
+      if (!startHistoryId) {
+        throw new Error(`Missing Gmail history cursor for ${payload.mailboxId}`);
+      }
+
+      const historyPage = await getGmailHistoryPage({
+        accessToken: credentials.accessToken,
+        startHistoryId,
+        pageToken: payload.pageToken,
+        labelId: effectiveLabels.length === 1 ? effectiveLabels[0] : undefined,
+      });
+
+      const messageIds = extractHistoryMessageIds(historyPage);
+      for (const id of messageIds) {
+        const gmailMessage = await fetchGmailMessage(credentials.accessToken, id);
+        const normalized = normalizeGmailMessage(gmailMessage);
+        await upsertNormalizedMessage(db, {
+          mailboxId: payload.mailboxId,
+          ...normalized,
+        });
+      }
+
+      await db
+        .insert(gmailMailboxState)
+        .values({
+          mailboxId: payload.mailboxId,
+          gmailAddress: mailboxRow.address,
+          lastHistoryId: historyPage.historyId ?? startHistoryId,
+          lastPartialSyncAt: new Date(),
+        })
+        .onConflictDoUpdate({
+          target: gmailMailboxState.mailboxId,
+          set: {
+            gmailAddress: mailboxRow.address,
+            lastHistoryId: historyPage.historyId ?? startHistoryId,
+            lastPartialSyncAt: new Date(),
+            updatedAt: new Date(),
+          },
+        });
+
+      if (historyPage.nextPageToken) {
+        await env.MAIL_SYNC_QUEUE.send({
+          provider: "gmail",
+          mailboxId: payload.mailboxId,
+          reason: "gmail-history",
+          historyId: startHistoryId,
+          pageToken: historyPage.nextPageToken,
+        });
+      }
+
+      message.ack();
+      continue;
+    }
+
+    const gmailMessages = await fetchGmailMessages(credentials.accessToken, effectiveLabels);
 
     for (const gmailMessage of gmailMessages) {
       const normalized = normalizeGmailMessage(gmailMessage);
@@ -81,6 +192,24 @@ export async function handleMailQueue(batch: MessageBatch<unknown>, env: Env) {
         ...normalized,
       });
     }
+
+    await db
+      .insert(gmailMailboxState)
+      .values({
+        mailboxId: payload.mailboxId,
+        gmailAddress: mailboxRow.address,
+        lastHistoryId: gmailMessages[0]?.historyId ?? null,
+        lastFullSyncAt: new Date(),
+      })
+      .onConflictDoUpdate({
+        target: gmailMailboxState.mailboxId,
+        set: {
+          gmailAddress: mailboxRow.address,
+          lastHistoryId: gmailMessages[0]?.historyId ?? null,
+          lastFullSyncAt: new Date(),
+          updatedAt: new Date(),
+        },
+      });
 
     message.ack();
   }

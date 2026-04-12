@@ -13,13 +13,17 @@ import { env } from "@email-relay/env/server";
 import {
   buildGoogleAuthUrl,
   createMailboxCredentialStore,
+  startGmailWatch,
   exchangeGoogleCode,
   getGoogleProfile,
   listGoogleLabels,
   parseOauthState,
   signOauthState,
 } from "@email-relay/mail";
+import { gmailMailboxState } from "@email-relay/db/schema/provider";
 import { handleMailQueue } from "./mail/queue";
+import { handleGmailWebhook } from "./mail/gmail-webhook";
+import { handleScheduled } from "./mail/scheduled";
 import { OpenAPIHandler } from "@orpc/openapi/fetch";
 import { OpenAPIReferencePlugin } from "@orpc/openapi/plugins";
 import { onError } from "@orpc/server";
@@ -149,6 +153,32 @@ app.get("/oauth/gmail/callback", async (c) => {
     tokenType: tokens.token_type,
   });
 
+  const watch = await startGmailWatch(
+    tokens.access_token,
+    c.env.GOOGLE_GMAIL_PUBSUB_TOPIC,
+    selectedLabels.map((label) => label.id),
+  );
+
+  await db
+    .insert(gmailMailboxState)
+    .values({
+      mailboxId: mailboxRecord.id,
+      gmailAddress: profile.emailAddress,
+      lastHistoryId: watch.historyId,
+      watchExpirationAt: new Date(Number(watch.expiration)),
+      watchStatus: "active",
+    })
+    .onConflictDoUpdate({
+      target: gmailMailboxState.mailboxId,
+      set: {
+        gmailAddress: profile.emailAddress,
+        lastHistoryId: watch.historyId,
+        watchExpirationAt: new Date(Number(watch.expiration)),
+        watchStatus: "active",
+        updatedAt: new Date(),
+      },
+    });
+
   await c.env.MAIL_SYNC_QUEUE.send({
     provider: "gmail",
     mailboxId: mailboxRecord.id,
@@ -157,6 +187,8 @@ app.get("/oauth/gmail/callback", async (c) => {
 
   return c.redirect(`${c.env.CORS_ORIGIN}/mailboxes/${mailboxRecord.id}`);
 });
+
+app.post("/webhooks/gmail/push", async (c) => handleGmailWebhook(c.req.raw, c.env));
 
 export const apiHandler = new OpenAPIHandler(appRouter, {
   plugins: [
@@ -210,4 +242,5 @@ app.get("/", (c) => {
 export default {
   fetch: app.fetch,
   queue: handleMailQueue,
+  scheduled: handleScheduled,
 };

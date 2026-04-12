@@ -32,6 +32,7 @@ export const server = await Worker("server", {
   cwd: "../../apps/server",
   entrypoint: "src/index.ts",
   compatibility: "node",
+  crons: ["0 */6 * * *", "*/15 * * * *"],
   bindings: {
     DB: db,
     MAIL_SYNC_QUEUE: mailSyncQueue,
