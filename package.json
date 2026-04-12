@@ -1,0 +1,33 @@
+{
+  "name": "email-relay",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "type": "module",
+  "scripts": {
+    "dev": "turbo dev",
+    "build": "turbo build",
+    "check-types": "turbo check-types",
+    "dev:web": "turbo -F web dev",
+    "dev:server": "turbo -F server dev",
+    "db:push": "turbo -F @email-relay/db db:push",
+    "db:generate": "turbo -F @email-relay/db db:generate",
+    "deploy": "turbo -F @email-relay/infra deploy",
+    "destroy": "turbo -F @email-relay/infra destroy"
+  },
+  "dependencies": {
+    "@email-relay/env": "workspace:*",
+    "dotenv": "catalog:",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "catalog:",
+    "@email-relay/config": "workspace:*",
+    "@types/node": "catalog:",
+    "turbo": "^2.8.12",
+    "typescript": "^5"
+  },
+  "packageManager": "pnpm@10.33.0"
+}

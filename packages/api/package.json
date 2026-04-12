@@ -1,0 +1,29 @@
+{
+  "name": "@email-relay/api",
+  "type": "module",
+  "exports": {
+    ".": {
+      "default": "./src/index.ts"
+    },
+    "./*": {
+      "default": "./src/*.ts"
+    }
+  },
+  "scripts": {},
+  "dependencies": {
+    "@email-relay/auth": "workspace:*",
+    "@email-relay/db": "workspace:*",
+    "@email-relay/env": "workspace:*",
+    "@orpc/client": "catalog:",
+    "@orpc/openapi": "catalog:",
+    "@orpc/server": "catalog:",
+    "@orpc/zod": "catalog:",
+    "dotenv": "catalog:",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@email-relay/config": "workspace:*",
+    "hono": "catalog:",
+    "typescript": "^5"
+  }
+}
