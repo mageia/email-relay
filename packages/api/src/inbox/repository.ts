@@ -16,8 +16,48 @@ function buildConditions(filters: ReturnType<typeof normalizeInboxFilters>) {
 
 export function createInboxRepository(db: any) {
   return {
-    async listMessages(input: InboxFilters) {
+    async searchMessages(input: InboxFilters): Promise<any[]> {
       const filters = normalizeInboxFilters(input);
+      if (!filters.search) {
+        return this.listMessages(filters);
+      }
+
+      const sql = `
+        SELECT
+          m.id,
+          m.subject,
+          m.snippet,
+          m.received_at as receivedAt,
+          m.is_read as isRead,
+          mb.address as mailboxAddress,
+          mb.provider as provider
+        FROM mail_message_fts fts
+        JOIN mail_message m ON m.id = fts.message_id
+        JOIN mailbox mb ON mb.id = m.mailbox_id
+        WHERE mail_message_fts MATCH ?
+        ORDER BY bm25(mail_message_fts), m.received_at DESC
+        LIMIT ?
+      `;
+
+      if (typeof db.execute === "function") {
+        return db.execute(sql);
+      }
+
+      const raw = db.$client ?? db;
+      if (raw?.prepare) {
+        const result = await raw.prepare(sql).bind(filters.search, filters.limit).all();
+        return result.results ?? [];
+      }
+
+      return [];
+    },
+
+    async listMessages(input: InboxFilters): Promise<any[]> {
+      const filters = normalizeInboxFilters(input);
+      if (filters.search) {
+        return this.searchMessages(filters);
+      }
+
       const conditions = buildConditions(filters);
 
       return db

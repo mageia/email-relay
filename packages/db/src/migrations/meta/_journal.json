@@ -43,6 +43,13 @@
       "when": 1775983305867,
       "tag": "0005_powerful_blackheart",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1775987032314,
+      "tag": "0006_mail_message_fts",
+      "breakpoints": true
     }
   ]
 }

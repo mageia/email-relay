@@ -1,7 +1,9 @@
 import { createDb } from "@email-relay/db";
 import { imapMailboxState } from "@email-relay/db/schema/imap";
+import { mailbox, syncAlert } from "@email-relay/db/schema/mail";
 import { outlookMailboxState } from "@email-relay/db/schema/outlook";
 import { gmailMailboxState } from "@email-relay/db/schema/provider";
+import { toSyncAlertInput } from "@email-relay/api/operations/alerts";
 
 export async function handleScheduled(_controller: ScheduledController, env: Env) {
   const db = createDb();
@@ -69,5 +71,26 @@ export async function handleScheduled(_controller: ScheduledController, env: Env
       mailboxId: state.mailboxId,
       reason: "imap-poll",
     });
+  }
+
+  const staleThreshold = Date.now() - 60 * 60 * 1000;
+  const mailboxes = await db.select().from(mailbox);
+  for (const row of mailboxes as Array<{
+    id: string;
+    groupId?: string | null;
+    lastSuccessfulSyncAt?: Date | null;
+  }>) {
+    if (!row.lastSuccessfulSyncAt || row.lastSuccessfulSyncAt.getTime() >= staleThreshold) {
+      continue;
+    }
+
+    await db.insert(syncAlert).values(
+      toSyncAlertInput({
+        mailboxId: row.id,
+        groupId: row.groupId ?? undefined,
+        category: "stale-sync",
+        detail: "超过 1 小时没有成功同步",
+      }),
+    );
   }
 }
