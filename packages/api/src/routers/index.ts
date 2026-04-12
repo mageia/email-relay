@@ -6,6 +6,7 @@ import { alertsRouter } from "./alerts";
 import { groupsRouter } from "./groups";
 import { inboxRouter } from "./inbox";
 import { mailboxesRouter } from "./mailboxes";
+import { operationsRouter } from "./operations";
 
 export const appRouter = {
   admin: adminRouter,
@@ -13,6 +14,7 @@ export const appRouter = {
   groups: groupsRouter,
   alerts: alertsRouter,
   mailboxes: mailboxesRouter,
+  operations: operationsRouter,
   healthCheck: publicProcedure.handler(() => {
     return "OK";
   }),

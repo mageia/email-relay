@@ -14,6 +14,7 @@ import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as ProtectedRouteImport } from './routes/_protected'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ProtectedSettingsRouteImport } from './routes/_protected/settings'
+import { Route as ProtectedOperationsRouteImport } from './routes/_protected/operations'
 import { Route as ProtectedMailboxesRouteImport } from './routes/_protected/mailboxes'
 import { Route as ProtectedInboxRouteImport } from './routes/_protected/inbox'
 import { Route as ProtectedGroupsRouteImport } from './routes/_protected/groups'
@@ -43,6 +44,11 @@ const IndexRoute = IndexRouteImport.update({
 const ProtectedSettingsRoute = ProtectedSettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
+  getParentRoute: () => ProtectedRoute,
+} as any)
+const ProtectedOperationsRoute = ProtectedOperationsRouteImport.update({
+  id: '/operations',
+  path: '/operations',
   getParentRoute: () => ProtectedRoute,
 } as any)
 const ProtectedMailboxesRoute = ProtectedMailboxesRouteImport.update({
@@ -86,6 +92,7 @@ export interface FileRoutesByFullPath {
   '/groups': typeof ProtectedGroupsRoute
   '/inbox': typeof ProtectedInboxRoute
   '/mailboxes': typeof ProtectedMailboxesRouteWithChildren
+  '/operations': typeof ProtectedOperationsRoute
   '/settings': typeof ProtectedSettingsRoute
   '/mailboxes/$mailboxId': typeof ProtectedMailboxesMailboxIdRoute
   '/mailboxes/connect': typeof ProtectedMailboxesConnectRoute
@@ -98,6 +105,7 @@ export interface FileRoutesByTo {
   '/groups': typeof ProtectedGroupsRoute
   '/inbox': typeof ProtectedInboxRoute
   '/mailboxes': typeof ProtectedMailboxesRouteWithChildren
+  '/operations': typeof ProtectedOperationsRoute
   '/settings': typeof ProtectedSettingsRoute
   '/mailboxes/$mailboxId': typeof ProtectedMailboxesMailboxIdRoute
   '/mailboxes/connect': typeof ProtectedMailboxesConnectRoute
@@ -112,6 +120,7 @@ export interface FileRoutesById {
   '/_protected/groups': typeof ProtectedGroupsRoute
   '/_protected/inbox': typeof ProtectedInboxRoute
   '/_protected/mailboxes': typeof ProtectedMailboxesRouteWithChildren
+  '/_protected/operations': typeof ProtectedOperationsRoute
   '/_protected/settings': typeof ProtectedSettingsRoute
   '/_protected/mailboxes/$mailboxId': typeof ProtectedMailboxesMailboxIdRoute
   '/_protected/mailboxes/connect': typeof ProtectedMailboxesConnectRoute
@@ -126,6 +135,7 @@ export interface FileRouteTypes {
     | '/groups'
     | '/inbox'
     | '/mailboxes'
+    | '/operations'
     | '/settings'
     | '/mailboxes/$mailboxId'
     | '/mailboxes/connect'
@@ -138,6 +148,7 @@ export interface FileRouteTypes {
     | '/groups'
     | '/inbox'
     | '/mailboxes'
+    | '/operations'
     | '/settings'
     | '/mailboxes/$mailboxId'
     | '/mailboxes/connect'
@@ -151,6 +162,7 @@ export interface FileRouteTypes {
     | '/_protected/groups'
     | '/_protected/inbox'
     | '/_protected/mailboxes'
+    | '/_protected/operations'
     | '/_protected/settings'
     | '/_protected/mailboxes/$mailboxId'
     | '/_protected/mailboxes/connect'
@@ -198,6 +210,13 @@ declare module '@tanstack/react-router' {
       path: '/settings'
       fullPath: '/settings'
       preLoaderRoute: typeof ProtectedSettingsRouteImport
+      parentRoute: typeof ProtectedRoute
+    }
+    '/_protected/operations': {
+      id: '/_protected/operations'
+      path: '/operations'
+      fullPath: '/operations'
+      preLoaderRoute: typeof ProtectedOperationsRouteImport
       parentRoute: typeof ProtectedRoute
     }
     '/_protected/mailboxes': {
@@ -263,6 +282,7 @@ interface ProtectedRouteChildren {
   ProtectedGroupsRoute: typeof ProtectedGroupsRoute
   ProtectedInboxRoute: typeof ProtectedInboxRoute
   ProtectedMailboxesRoute: typeof ProtectedMailboxesRouteWithChildren
+  ProtectedOperationsRoute: typeof ProtectedOperationsRoute
   ProtectedSettingsRoute: typeof ProtectedSettingsRoute
 }
 
@@ -271,6 +291,7 @@ const ProtectedRouteChildren: ProtectedRouteChildren = {
   ProtectedGroupsRoute: ProtectedGroupsRoute,
   ProtectedInboxRoute: ProtectedInboxRoute,
   ProtectedMailboxesRoute: ProtectedMailboxesRouteWithChildren,
+  ProtectedOperationsRoute: ProtectedOperationsRoute,
   ProtectedSettingsRoute: ProtectedSettingsRoute,
 }
 

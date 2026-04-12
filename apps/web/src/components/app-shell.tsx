@@ -8,6 +8,7 @@ const NAV_ITEMS = [
   { href: "/alerts", label: "Alerts" },
   { href: "/groups", label: "Groups" },
   { href: "/mailboxes", label: "Mailboxes" },
+  { href: "/operations", label: "Operations" },
   { href: "/settings", label: "Settings" },
 ] as const;
 

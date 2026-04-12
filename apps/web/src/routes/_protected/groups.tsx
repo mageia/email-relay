@@ -1,6 +1,7 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 
+import BackfillForm from "@/components/backfill-form";
 import GroupForm, { type GroupFormValue } from "@/components/group-form";
 import { client, orpc, queryClient } from "@/utils/orpc";
 
@@ -38,6 +39,18 @@ function GroupsPage() {
             <li key={group.id} className="rounded-lg border p-3">
               <div className="font-medium">{group.name}</div>
               <div className="text-sm text-muted-foreground">{group.kind}</div>
+              <div className="mt-3">
+                <BackfillForm
+                  isSubmitting={false}
+                  onSubmit={async ({ rangeStart, rangeEnd }) => {
+                    await client.operations.triggerGroupBackfill({
+                      groupId: group.id,
+                      rangeStart: new Date(`${rangeStart}T00:00:00.000Z`).toISOString(),
+                      rangeEnd: new Date(`${rangeEnd}T00:00:00.000Z`).toISOString(),
+                    });
+                  }}
+                />
+              </div>
             </li>
           ))}
           {groups.data?.length === 0 ? <li className="text-sm text-muted-foreground">还没有分组</li> : null}

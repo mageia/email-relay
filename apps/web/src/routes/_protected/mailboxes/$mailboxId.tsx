@@ -1,9 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 
+import BackfillForm from "@/components/backfill-form";
 import GmailLabelSelector from "@/components/gmail-label-selector";
 import ImapSettingsForm from "@/components/imap-settings-form";
-import { orpc } from "@/utils/orpc";
+import { client, orpc } from "@/utils/orpc";
 
 export const Route = createFileRoute("/_protected/mailboxes/$mailboxId")({
   component: MailboxDetailPage,
@@ -36,6 +37,18 @@ function MailboxDetailPage() {
           {mailbox ? `${mailbox.provider} · ${mailbox.status}` : "正在加载邮箱信息..."}
         </p>
       </div>
+      {mailbox ? (
+        <BackfillForm
+          isSubmitting={false}
+          onSubmit={async ({ rangeStart, rangeEnd }) => {
+            await client.operations.triggerMailboxBackfill({
+              mailboxId: mailbox.id,
+              rangeStart: new Date(`${rangeStart}T00:00:00.000Z`).toISOString(),
+              rangeEnd: new Date(`${rangeEnd}T00:00:00.000Z`).toISOString(),
+            });
+          }}
+        />
+      ) : null}
       {mailbox?.provider === "imap" ? (
         <ImapSettingsForm folders={selectedLabels} />
       ) : (
