@@ -16,6 +16,7 @@
     "@email-relay/auth": "workspace:*",
     "@email-relay/db": "workspace:*",
     "@email-relay/env": "workspace:*",
+    "@email-relay/mail": "workspace:*",
     "@orpc/client": "catalog:",
     "@orpc/openapi": "catalog:",
     "@orpc/server": "catalog:",

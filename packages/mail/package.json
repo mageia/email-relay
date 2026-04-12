@@ -1,0 +1,20 @@
+{
+  "name": "@email-relay/mail",
+  "type": "module",
+  "exports": {
+    ".": {
+      "default": "./src/index.ts"
+    },
+    "./*": {
+      "default": "./src/*.ts"
+    }
+  },
+  "dependencies": {
+    "@email-relay/db": "workspace:*",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@email-relay/config": "workspace:*",
+    "typescript": "^5"
+  }
+}
