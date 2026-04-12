@@ -13,7 +13,11 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as ProtectedRouteImport } from './routes/_protected'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ProtectedSettingsRouteImport } from './routes/_protected/settings'
+import { Route as ProtectedMailboxesRouteImport } from './routes/_protected/mailboxes'
 import { Route as ProtectedInboxRouteImport } from './routes/_protected/inbox'
+import { Route as ProtectedGroupsRouteImport } from './routes/_protected/groups'
+import { Route as ProtectedAlertsRouteImport } from './routes/_protected/alerts'
 
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
@@ -34,9 +38,29 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ProtectedSettingsRoute = ProtectedSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => ProtectedRoute,
+} as any)
+const ProtectedMailboxesRoute = ProtectedMailboxesRouteImport.update({
+  id: '/mailboxes',
+  path: '/mailboxes',
+  getParentRoute: () => ProtectedRoute,
+} as any)
 const ProtectedInboxRoute = ProtectedInboxRouteImport.update({
   id: '/inbox',
   path: '/inbox',
+  getParentRoute: () => ProtectedRoute,
+} as any)
+const ProtectedGroupsRoute = ProtectedGroupsRouteImport.update({
+  id: '/groups',
+  path: '/groups',
+  getParentRoute: () => ProtectedRoute,
+} as any)
+const ProtectedAlertsRoute = ProtectedAlertsRouteImport.update({
+  id: '/alerts',
+  path: '/alerts',
   getParentRoute: () => ProtectedRoute,
 } as any)
 
@@ -44,13 +68,21 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRoute
   '/login': typeof LoginRoute
+  '/alerts': typeof ProtectedAlertsRoute
+  '/groups': typeof ProtectedGroupsRoute
   '/inbox': typeof ProtectedInboxRoute
+  '/mailboxes': typeof ProtectedMailboxesRoute
+  '/settings': typeof ProtectedSettingsRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRoute
   '/login': typeof LoginRoute
+  '/alerts': typeof ProtectedAlertsRoute
+  '/groups': typeof ProtectedGroupsRoute
   '/inbox': typeof ProtectedInboxRoute
+  '/mailboxes': typeof ProtectedMailboxesRoute
+  '/settings': typeof ProtectedSettingsRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -58,20 +90,44 @@ export interface FileRoutesById {
   '/_protected': typeof ProtectedRouteWithChildren
   '/dashboard': typeof DashboardRoute
   '/login': typeof LoginRoute
+  '/_protected/alerts': typeof ProtectedAlertsRoute
+  '/_protected/groups': typeof ProtectedGroupsRoute
   '/_protected/inbox': typeof ProtectedInboxRoute
+  '/_protected/mailboxes': typeof ProtectedMailboxesRoute
+  '/_protected/settings': typeof ProtectedSettingsRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/dashboard' | '/login' | '/inbox'
+  fullPaths:
+    | '/'
+    | '/dashboard'
+    | '/login'
+    | '/alerts'
+    | '/groups'
+    | '/inbox'
+    | '/mailboxes'
+    | '/settings'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/dashboard' | '/login' | '/inbox'
+  to:
+    | '/'
+    | '/dashboard'
+    | '/login'
+    | '/alerts'
+    | '/groups'
+    | '/inbox'
+    | '/mailboxes'
+    | '/settings'
   id:
     | '__root__'
     | '/'
     | '/_protected'
     | '/dashboard'
     | '/login'
+    | '/_protected/alerts'
+    | '/_protected/groups'
     | '/_protected/inbox'
+    | '/_protected/mailboxes'
+    | '/_protected/settings'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -111,6 +167,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_protected/settings': {
+      id: '/_protected/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof ProtectedSettingsRouteImport
+      parentRoute: typeof ProtectedRoute
+    }
+    '/_protected/mailboxes': {
+      id: '/_protected/mailboxes'
+      path: '/mailboxes'
+      fullPath: '/mailboxes'
+      preLoaderRoute: typeof ProtectedMailboxesRouteImport
+      parentRoute: typeof ProtectedRoute
+    }
     '/_protected/inbox': {
       id: '/_protected/inbox'
       path: '/inbox'
@@ -118,15 +188,37 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProtectedInboxRouteImport
       parentRoute: typeof ProtectedRoute
     }
+    '/_protected/groups': {
+      id: '/_protected/groups'
+      path: '/groups'
+      fullPath: '/groups'
+      preLoaderRoute: typeof ProtectedGroupsRouteImport
+      parentRoute: typeof ProtectedRoute
+    }
+    '/_protected/alerts': {
+      id: '/_protected/alerts'
+      path: '/alerts'
+      fullPath: '/alerts'
+      preLoaderRoute: typeof ProtectedAlertsRouteImport
+      parentRoute: typeof ProtectedRoute
+    }
   }
 }
 
 interface ProtectedRouteChildren {
+  ProtectedAlertsRoute: typeof ProtectedAlertsRoute
+  ProtectedGroupsRoute: typeof ProtectedGroupsRoute
   ProtectedInboxRoute: typeof ProtectedInboxRoute
+  ProtectedMailboxesRoute: typeof ProtectedMailboxesRoute
+  ProtectedSettingsRoute: typeof ProtectedSettingsRoute
 }
 
 const ProtectedRouteChildren: ProtectedRouteChildren = {
+  ProtectedAlertsRoute: ProtectedAlertsRoute,
+  ProtectedGroupsRoute: ProtectedGroupsRoute,
   ProtectedInboxRoute: ProtectedInboxRoute,
+  ProtectedMailboxesRoute: ProtectedMailboxesRoute,
+  ProtectedSettingsRoute: ProtectedSettingsRoute,
 }
 
 const ProtectedRouteWithChildren = ProtectedRoute._addFileChildren(
