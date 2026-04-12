@@ -1,11 +1,13 @@
 import { desc, eq } from "drizzle-orm";
 
+import { imapMailboxState } from "@email-relay/db/schema/imap";
 import { mailbox } from "@email-relay/db/schema/mail";
 import { outlookMailboxState } from "@email-relay/db/schema/outlook";
 import { gmailMailboxState, mailboxFolder } from "@email-relay/db/schema/provider";
 
 type GmailLabel = { id: string; name: string; kind: string };
 type OutlookFolder = { id: string; name: string; kind: string; selected: boolean };
+type ImapFolder = { id: string; name: string; kind: string; selected: boolean };
 
 type MailboxRepositoryDeps =
   | any
@@ -141,6 +143,53 @@ export function createMailboxRepository(db: MailboxRepositoryDeps) {
       await db.insert(outlookMailboxState).values({
         mailboxId: createdMailbox.id,
         outlookAddress: input.address,
+      });
+
+      return createdMailbox;
+    },
+
+    async createImapMailbox(input: {
+      address: string;
+      username: string;
+      host: string;
+      port: number;
+      secure: boolean;
+      authType: string;
+      discoverySource: string;
+      selectedFolders: ImapFolder[];
+    }) {
+      const [createdMailbox] = await db
+        .insert(mailbox)
+        .values({
+          address: input.address,
+          provider: "imap",
+          authType: input.authType,
+          status: "active",
+          selectedFoldersJson: JSON.stringify(
+            input.selectedFolders.filter((folder) => folder.selected).map((folder) => folder.id),
+          ),
+        })
+        .returning();
+
+      await db.insert(mailboxFolder).values(
+        input.selectedFolders.map((folder) => ({
+          mailboxId: createdMailbox.id,
+          providerFolderId: folder.id,
+          displayName: folder.name,
+          kind: folder.kind,
+          selected: folder.selected,
+        })),
+      );
+
+      await db.insert(imapMailboxState).values({
+        mailboxId: createdMailbox.id,
+        username: input.username,
+        host: input.host,
+        port: input.port,
+        secure: input.secure,
+        authType: input.authType,
+        discoverySource: input.discoverySource,
+        lastValidatedAt: new Date(),
       });
 
       return createdMailbox;

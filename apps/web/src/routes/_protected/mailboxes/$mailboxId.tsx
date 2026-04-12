@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 
 import GmailLabelSelector from "@/components/gmail-label-selector";
+import ImapSettingsForm from "@/components/imap-settings-form";
 import { orpc } from "@/utils/orpc";
 
 export const Route = createFileRoute("/_protected/mailboxes/$mailboxId")({
@@ -14,11 +15,16 @@ function MailboxDetailPage() {
   const mailbox = mailboxes.data?.find((entry: { id: string }) => entry.id === mailboxId);
 
   const selectedLabels =
-    mailbox && (mailbox.provider === "gmail" || mailbox.provider === "outlook")
+    mailbox && (mailbox.provider === "gmail" || mailbox.provider === "outlook" || mailbox.provider === "imap")
       ? JSON.parse((mailbox.selectedFoldersJson as string | undefined) ?? "[]").map((labelId: string) => ({
           id: labelId,
           name: labelId,
-          kind: mailbox.provider === "gmail" ? "system" : "folder",
+          kind:
+            mailbox.provider === "gmail"
+              ? "system"
+              : mailbox.provider === "outlook"
+                ? "folder"
+                : "imap-folder",
         }))
       : [];
 
@@ -30,7 +36,11 @@ function MailboxDetailPage() {
           {mailbox ? `${mailbox.provider} · ${mailbox.status}` : "正在加载邮箱信息..."}
         </p>
       </div>
-      <GmailLabelSelector labels={selectedLabels} />
+      {mailbox?.provider === "imap" ? (
+        <ImapSettingsForm folders={selectedLabels} />
+      ) : (
+        <GmailLabelSelector labels={selectedLabels} />
+      )}
     </div>
   );
 }

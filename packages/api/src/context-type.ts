@@ -16,4 +16,5 @@ export interface Context {
   adminSession: AdminSession | null;
   db: any;
   authStore: AuthStore;
+  env: Record<string, unknown>;
 }

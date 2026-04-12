@@ -66,6 +66,7 @@ export async function createContext({ context }: CreateContextOptions): Promise<
     adminSession: adminSessionState.authenticated ? adminSessionState : null,
     db,
     authStore: store,
+    env: context.env as Record<string, unknown>,
   };
 }
 
