@@ -1,9 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
+import { useState } from "react";
 
 import AlertSummaryCards from "@/components/alert-summary-cards";
 import InboxEmptyState from "@/components/inbox-empty-state";
 import InboxSidebar from "@/components/inbox-sidebar";
+import InboxSearchBar from "@/components/inbox-search-bar";
 import { orpc } from "@/utils/orpc";
 
 export const Route = createFileRoute("/_protected/inbox")({
@@ -11,8 +13,9 @@ export const Route = createFileRoute("/_protected/inbox")({
 });
 
 function InboxPage() {
+  const [search, setSearch] = useState("");
   const filters = useQuery(orpc.inbox.listFilters.queryOptions());
-  const messages = useQuery(orpc.inbox.listMessages.queryOptions({ input: { limit: 20 } }));
+  const messages = useQuery(orpc.inbox.listMessages.queryOptions({ input: { limit: 20, search } }));
   const summary = useQuery(orpc.alerts.summary.queryOptions());
 
   return (
@@ -24,6 +27,7 @@ function InboxPage() {
           <p className="text-sm text-muted-foreground">这里会显示所有已同步邮件的聚合视图。</p>
         </div>
         {summary.data ? <AlertSummaryCards summary={summary.data} /> : null}
+        <InboxSearchBar value={search} onChange={setSearch} />
         {messages.data && messages.data.length > 0 ? (
           <div className="rounded-xl border">
             {messages.data.map((message: { id: string; subject: string; mailboxAddress: string }) => (

@@ -1,4 +1,5 @@
 import { eq, sql } from "drizzle-orm";
+import { z } from "zod";
 
 import { mailbox, syncAlert, syncJob } from "@email-relay/db/schema/mail";
 
@@ -7,6 +8,21 @@ import { createInboxRepository } from "../inbox/repository";
 
 export const alertsRouter = {
   list: protectedProcedure.handler(({ context }) => createInboxRepository(context.db).listAlerts()),
+  resolve: protectedProcedure
+    .input(
+      z.object({
+        alertId: z.string().min(1),
+      }),
+    )
+    .handler(({ context, input }) =>
+      context.db
+        .update(syncAlert)
+        .set({
+          status: "resolved",
+          resolvedAt: new Date(),
+        })
+        .where(eq(syncAlert.id, input.alertId)),
+    ),
   summary: protectedProcedure.handler(async ({ context }) => {
     const openAlertsRows = await context.db
       .select({
