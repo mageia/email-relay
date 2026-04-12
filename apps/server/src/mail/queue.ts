@@ -1,14 +1,17 @@
 import { createDb } from "@email-relay/db";
+import { imapMailboxState } from "@email-relay/db/schema/imap";
 import { mailbox } from "@email-relay/db/schema/mail";
 import { outlookMailboxState } from "@email-relay/db/schema/outlook";
 import { gmailMailboxState } from "@email-relay/db/schema/provider";
 import {
+  fetchImapFolderMessages,
   createOutlookSubscription,
   extractHistoryMessageIds,
   getOutlookDeltaPage,
   getGmailHistoryPage,
   MailSyncPayloadSchema,
   createMailboxCredentialStore,
+  normalizeImapMessage,
   normalizeGmailMessage,
   normalizeOutlookMessage,
   startGmailWatch,
@@ -78,6 +81,51 @@ export async function handleMailQueue(batch: MessageBatch<unknown>, env: Env) {
 
   for (const message of batch.messages) {
     const payload = MailSyncPayloadSchema.parse(message.body);
+    if (payload.provider === "imap") {
+      const mailboxes = await db.select().from(mailbox);
+      const mailboxRow = mailboxes.find((entry: { id: string }) => entry.id === payload.mailboxId);
+
+      if (!mailboxRow) {
+        message.ack();
+        continue;
+      }
+
+      const imapStates = await db.select().from(imapMailboxState);
+      const state = imapStates.find((entry: { mailboxId: string }) => entry.mailboxId === payload.mailboxId);
+      if (!state) {
+        throw new Error(`Missing IMAP state for ${payload.mailboxId}`);
+      }
+
+      const credentials = await credentialStore.readOauthTokens(payload.mailboxId);
+      if (!credentials?.accessToken) {
+        throw new Error(`Missing IMAP credentials for ${payload.mailboxId}`);
+      }
+
+      const selectedFolders = payload.folderIds ?? (JSON.parse(mailboxRow.selectedFoldersJson) as string[]);
+      for (const folderId of selectedFolders) {
+        const records = await fetchImapFolderMessages({
+          host: state.host,
+          port: state.port,
+          secure: state.secure,
+          username: state.username,
+          password: credentials.accessToken,
+          folderId,
+          limit: 50,
+        });
+
+        for (const record of records) {
+          const normalized = await normalizeImapMessage(record);
+          await upsertNormalizedMessage(db, {
+            mailboxId: payload.mailboxId,
+            ...normalized,
+          });
+        }
+      }
+
+      message.ack();
+      continue;
+    }
+
     if (payload.provider === "outlook") {
       const mailboxes = await db.select().from(mailbox);
       const mailboxRow = mailboxes.find((entry: { id: string }) => entry.id === payload.mailboxId);
