@@ -16,6 +16,7 @@ const db = await D1Database("database", {
 
 const mailSyncQueue = await Queue("mail-sync", {
   name: "email-relay-mail-sync",
+  adopt: true,
 });
 
 export const web = await Vite("web", {
@@ -50,7 +51,8 @@ export const server = await Worker("server", {
     MICROSOFT_CLIENT_ID: alchemy.env.MICROSOFT_CLIENT_ID!,
     MICROSOFT_CLIENT_SECRET: alchemy.secret.env.MICROSOFT_CLIENT_SECRET!,
     MICROSOFT_OAUTH_REDIRECT_URL: alchemy.env.MICROSOFT_OAUTH_REDIRECT_URL!,
-    MICROSOFT_NOTIFICATION_SECRET: alchemy.secret.env.MICROSOFT_NOTIFICATION_SECRET!,
+    MICROSOFT_NOTIFICATION_SECRET:
+      alchemy.secret.env.MICROSOFT_NOTIFICATION_SECRET!,
   },
   eventSources: [
     {
