@@ -102,7 +102,7 @@ it("accepts an IMAP poll payload", () => {
 Run: `pnpm exec vitest run packages/mail/src/imap/discovery.test.ts packages/mail/src/sync/payload.test.ts`  
 Expected: FAIL with missing module errors
 
-- [ ] **Step 3: Implement discovery helpers, payload support, and IMAP schema**
+- [x] **Step 3: Implement discovery helpers, payload support, and IMAP schema**
 
 ```ts
 // packages/mail/src/imap/constants.ts
@@ -210,7 +210,7 @@ z.object({
 }),
 ```
 
-- [ ] **Step 4: Run tests, migration generation, and type checks**
+- [x] **Step 4: Run tests, migration generation, and type checks**
 
 Run: `pnpm exec vitest run packages/mail/src/imap/discovery.test.ts packages/mail/src/sync/payload.test.ts`  
 Expected: PASS
@@ -284,7 +284,7 @@ describe("normalizeImapFolders", () => {
 Run: `pnpm exec vitest run packages/mail/src/imap/socket.test.ts packages/mail/src/imap/folders.test.ts`  
 Expected: FAIL with missing module errors
 
-- [ ] **Step 3: Implement the IMAP socket/client, validation endpoint, and connect UI**
+- [x] **Step 3: Implement the IMAP socket/client, validation endpoint, and connect UI**
 
 ```ts
 // packages/mail/src/imap/socket.ts
@@ -488,7 +488,7 @@ describe("normalizeImapMessage", () => {
 Run: `pnpm exec vitest run packages/mail/src/imap/message.test.ts`  
 Expected: FAIL because MIME parsing is not implemented yet
 
-- [ ] **Step 3: Add `postal-mime` and implement initial sync in the queue worker**
+- [x] **Step 3: Add `postal-mime` and implement initial sync in the queue worker**
 
 ```json
 // packages/mail/package.json (append dependency)
@@ -619,7 +619,7 @@ describe("nextUidWindow", () => {
 Run: `pnpm exec vitest run packages/mail/src/imap/poll.test.ts`  
 Expected: FAIL with missing module error
 
-- [ ] **Step 3: Implement cursor math and cron polling**
+- [x] **Step 3: Implement cursor math and cron polling**
 
 ```ts
 // packages/mail/src/imap/poll.ts
@@ -700,7 +700,7 @@ git commit -m "feat: add incremental imap polling"
 **Files:**
 - Modify: `README.md`
 
-- [ ] **Step 1: Document the discovery and manual-fallback behavior**
+- [x] **Step 1: Document the discovery and manual-fallback behavior**
 
 ```md
 ## Generic IMAP setup

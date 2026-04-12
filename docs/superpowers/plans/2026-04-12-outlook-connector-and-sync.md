@@ -110,7 +110,7 @@ it("accepts an Outlook delta payload", () => {
 Run: `pnpm exec vitest run packages/mail/src/outlook/oauth-state.test.ts packages/mail/src/sync/payload.test.ts`  
 Expected: FAIL because Outlook helpers and payload branch do not exist
 
-- [ ] **Step 3: Implement Outlook constants, auth helpers, payload branch, and schema**
+- [x] **Step 3: Implement Outlook constants, auth helpers, payload branch, and schema**
 
 ```ts
 // packages/mail/src/outlook/constants.ts
@@ -226,7 +226,7 @@ z.object({
 }),
 ```
 
-- [ ] **Step 4: Run tests, generate migration, and verify types**
+- [x] **Step 4: Run tests, generate migration, and verify types**
 
 Run: `pnpm exec vitest run packages/mail/src/outlook/oauth-state.test.ts packages/mail/src/sync/payload.test.ts`  
 Expected: PASS
@@ -285,7 +285,7 @@ describe("mapOutlookFolders", () => {
 Run: `pnpm exec vitest run packages/mail/src/outlook/folders.test.ts`  
 Expected: FAIL with missing file/module error
 
-- [ ] **Step 3: Implement folder discovery, OAuth callback storage, and mailbox detail UI**
+- [x] **Step 3: Implement folder discovery, OAuth callback storage, and mailbox detail UI**
 
 ```ts
 // packages/mail/src/outlook/profile.ts
@@ -499,7 +499,7 @@ describe("normalizeOutlookMessage", () => {
 Run: `pnpm exec vitest run packages/mail/src/outlook/message.test.ts`  
 Expected: FAIL with missing module error
 
-- [ ] **Step 3: Implement delta helper and queue branch**
+- [x] **Step 3: Implement delta helper and queue branch**
 
 ```ts
 // packages/mail/src/outlook/message.ts
@@ -654,7 +654,7 @@ describe("buildOutlookSubscriptionRequest", () => {
 Run: `pnpm exec vitest run packages/mail/src/outlook/subscription.test.ts`  
 Expected: FAIL with missing module error
 
-- [ ] **Step 3: Implement subscription create/renew and webhook validation**
+- [x] **Step 3: Implement subscription create/renew and webhook validation**
 
 ```ts
 // packages/mail/src/outlook/subscription.ts
@@ -788,7 +788,7 @@ git commit -m "feat: add outlook notifications and renewal"
 **Files:**
 - Modify: `README.md`
 
-- [ ] **Step 1: Document the Microsoft prerequisites**
+- [x] **Step 1: Document the Microsoft prerequisites**
 
 ```md
 ## Outlook / Microsoft 365 setup

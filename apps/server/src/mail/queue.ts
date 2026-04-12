@@ -25,6 +25,8 @@ import {
 import type { MailSyncPayload } from "@email-relay/mail";
 import { toSyncAlertInput } from "@email-relay/api/operations/alerts";
 
+import { recordMailboxSyncSuccess, shouldRecordMailboxSyncSuccess } from "./sync-status";
+
 async function fetchGmailMessages(
   accessToken: string,
   labelIds: string[],
@@ -185,8 +187,13 @@ type QueueMessage = MessageBatch<unknown>["messages"][number];
 async function ackWithSuccess(
   db: ReturnType<typeof createDb>,
   job: SyncJobRow | null,
+  payload: MailSyncPayload,
   message: QueueMessage,
 ) {
+  if (shouldRecordMailboxSyncSuccess(payload)) {
+    await recordMailboxSyncSuccess(db, payload.mailboxId);
+  }
+
   await finalizeSyncJobSuccess(db, job);
   await message.ack();
 }
@@ -198,7 +205,7 @@ export async function handleMailQueue(batch: MessageBatch<unknown>, env: Env) {
   for (const message of batch.messages) {
     const payload = MailSyncPayloadSchema.parse(message.body);
     let job: SyncJobRow | null = null;
-    const ackSuccess = async () => ackWithSuccess(db, job, message);
+    const ackSuccess = async () => ackWithSuccess(db, job, payload, message);
 
     try {
       if (payload.provider === "imap") {

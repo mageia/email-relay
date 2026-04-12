@@ -130,7 +130,7 @@ describe("MailSyncPayloadSchema", () => {
 Run: `pnpm exec vitest run packages/mail/src/crypto/seal.test.ts packages/mail/src/sync/payload.test.ts`  
 Expected: FAIL with missing file/module errors
 
-- [ ] **Step 3: Add the shared package, credential sealing helpers, payload schema, and provider tables**
+- [x] **Step 3: Add the shared package, credential sealing helpers, payload schema, and provider tables**
 
 ```json
 // packages/mail/package.json
@@ -285,7 +285,7 @@ export * from "./crypto/seal";
 export * from "./sync/payload";
 ```
 
-- [ ] **Step 4: Run tests, generate migrations, and verify types**
+- [x] **Step 4: Run tests, generate migrations, and verify types**
 
 Run: `pnpm exec vitest run packages/mail/src/crypto/seal.test.ts packages/mail/src/sync/payload.test.ts`  
 Expected: PASS
@@ -379,7 +379,7 @@ describe("createMailboxRepository", () => {
 Run: `pnpm exec vitest run packages/mail/src/gmail/oauth-state.test.ts packages/api/src/mailboxes/repository.test.ts`  
 Expected: FAIL with missing module errors
 
-- [ ] **Step 3: Implement Gmail OAuth helpers, the mailbox repository, and the connect UI/API**
+- [x] **Step 3: Implement Gmail OAuth helpers, the mailbox repository, and the connect UI/API**
 
 ```ts
 // packages/mail/src/gmail/constants.ts
@@ -846,7 +846,7 @@ describe("normalizeGmailMessage", () => {
 Run: `pnpm exec vitest run packages/mail/src/gmail/message.test.ts`  
 Expected: FAIL because `normalizeGmailMessage` does not exist
 
-- [ ] **Step 3: Implement the Gmail message mapper, queue consumer, and upsert pipeline**
+- [x] **Step 3: Implement the Gmail message mapper, queue consumer, and upsert pipeline**
 
 ```ts
 // packages/mail/src/gmail/message.ts
@@ -1083,7 +1083,7 @@ describe("decodeGmailPushBody", () => {
 Run: `pnpm exec vitest run packages/mail/src/gmail/history.test.ts`  
 Expected: FAIL with missing module errors
 
-- [ ] **Step 3: Implement watch registration, webhook decode, queue enqueue, and scheduled renewal**
+- [x] **Step 3: Implement watch registration, webhook decode, queue enqueue, and scheduled renewal**
 
 ```ts
 // packages/mail/src/gmail/watch.ts
@@ -1245,7 +1245,7 @@ git commit -m "feat: add gmail incremental sync and watch renewal"
 - Modify: `README.md`
 - Modify: `docs/superpowers/specs/2026-04-12-multi-email-aggregator-design.md` (only if the implementation reveals a necessary clarification)
 
-- [ ] **Step 1: Document the exact Gmail prerequisites**
+- [x] **Step 1: Document the exact Gmail prerequisites**
 
 ```md
 ## Gmail setup

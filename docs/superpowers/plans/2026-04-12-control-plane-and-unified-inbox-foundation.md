@@ -91,7 +91,7 @@ The approved spec is Epic-sized, so this plan intentionally covers only **Subpro
 - Modify: `apps/web/package.json`
 - Modify: `packages/api/package.json`
 
-- [ ] **Step 1: Write the failing test harness smoke test**
+- [x] **Step 1: Write the failing test harness smoke test**
 
 ```ts
 // packages/api/src/admin-auth/password.test.ts
@@ -114,7 +114,7 @@ describe("hashPassword", () => {
 Run: `pnpm exec vitest run packages/api/src/admin-auth/password.test.ts`  
 Expected: FAIL with `Command "vitest" not found` or `Cannot find module './password'`
 
-- [ ] **Step 3: Add the minimal workspace test setup**
+- [x] **Step 3: Add the minimal workspace test setup**
 
 ```json
 // package.json (append only the shown fields)
@@ -205,7 +205,7 @@ import "@testing-library/jest-dom/vitest";
 }
 ```
 
-- [ ] **Step 4: Write the minimal implementation required for the first test to pass**
+- [x] **Step 4: Write the minimal implementation required for the first test to pass**
 
 ```ts
 // packages/api/src/admin-auth/password.ts
@@ -297,7 +297,7 @@ git commit -m "test: add workspace vitest harness"
 - Modify: `packages/infra/alchemy.run.ts`
 - Modify: `apps/server/.env`
 
-- [ ] **Step 1: Write the failing auth service test**
+- [x] **Step 1: Write the failing auth service test**
 
 ```ts
 // packages/api/src/admin-auth/service.test.ts
@@ -354,7 +354,7 @@ describe("admin auth service", () => {
 Run: `pnpm exec vitest run packages/api/src/admin-auth/service.test.ts`  
 Expected: FAIL with `Cannot find module './service'`
 
-- [ ] **Step 3: Implement the admin schema, cookie helpers, and service layer**
+- [x] **Step 3: Implement the admin schema, cookie helpers, and service layer**
 
 ```ts
 // packages/db/src/schema/admin.ts
@@ -633,7 +633,7 @@ bindings: {
 ADMIN_BOOTSTRAP_PASSWORD=replace-with-a-long-local-dev-password
 ```
 
-- [ ] **Step 4: Run the auth tests and type checks**
+- [x] **Step 4: Run the auth tests and type checks**
 
 Run: `pnpm exec vitest run packages/api/src/admin-auth/password.test.ts packages/api/src/admin-auth/service.test.ts`  
 Expected: PASS
@@ -677,7 +677,7 @@ git commit -m "feat: add single-admin auth backend"
 - Create: `packages/api/src/routers/groups.ts`
 - Create: `packages/api/src/routers/alerts.ts`
 
-- [ ] **Step 1: Write the failing tests for inbox filter normalization and group CRUD**
+- [x] **Step 1: Write the failing tests for inbox filter normalization and group CRUD**
 
 ```ts
 // packages/api/src/inbox/filter.test.ts
@@ -728,7 +728,7 @@ describe("group repository", () => {
 Run: `pnpm exec vitest run packages/api/src/inbox/filter.test.ts packages/api/src/groups/repository.test.ts`  
 Expected: FAIL with missing module errors
 
-- [ ] **Step 3: Implement the schema, filter helper, repositories, and read routers**
+- [x] **Step 3: Implement the schema, filter helper, repositories, and read routers**
 
 ```ts
 // packages/db/src/schema/mail.ts
@@ -994,7 +994,7 @@ export const appRouter = {
 };
 ```
 
-- [ ] **Step 4: Run tests, generate the migration, and verify types**
+- [x] **Step 4: Run tests, generate the migration, and verify types**
 
 Run: `pnpm exec vitest run packages/api/src/inbox/filter.test.ts packages/api/src/groups/repository.test.ts`  
 Expected: PASS
@@ -1035,7 +1035,7 @@ git commit -m "feat: add inbox and group data foundation"
 - Delete: `apps/web/src/components/sign-up-form.tsx`
 - Delete: `apps/web/src/lib/auth-client.ts`
 
-- [ ] **Step 1: Write the failing admin login form test**
+- [x] **Step 1: Write the failing admin login form test**
 
 ```tsx
 // apps/web/src/components/admin-password-form.test.tsx
@@ -1066,7 +1066,7 @@ describe("AdminPasswordForm", () => {
 Run: `pnpm exec vitest run --config apps/web/vitest.config.ts apps/web/src/components/admin-password-form.test.tsx`  
 Expected: FAIL with missing module errors
 
-- [ ] **Step 3: Implement the client, routes, and shell components**
+- [x] **Step 3: Implement the client, routes, and shell components**
 
 ```ts
 // apps/web/src/lib/admin-session.ts
@@ -1379,7 +1379,7 @@ export const Route = createFileRoute("/")({
 });
 ```
 
-- [ ] **Step 4: Run web tests, type checks, and a local dev smoke build**
+- [x] **Step 4: Run web tests, type checks, and a local dev smoke build**
 
 Run: `pnpm exec vitest run --config apps/web/vitest.config.ts apps/web/src/components/admin-password-form.test.tsx`  
 Expected: PASS
@@ -1427,7 +1427,7 @@ git commit -m "feat: add inbox-first admin shell"
 - Modify: `packages/api/src/routers/groups.ts`
 - Modify: `packages/api/src/routers/alerts.ts`
 
-- [ ] **Step 1: Write the failing group management UI test**
+- [x] **Step 1: Write the failing group management UI test**
 
 ```tsx
 // apps/web/src/components/group-form.test.tsx
@@ -1457,7 +1457,7 @@ describe("GroupForm", () => {
 Run: `pnpm exec vitest run --config apps/web/vitest.config.ts apps/web/src/components/group-form.test.tsx`  
 Expected: FAIL with missing module error
 
-- [ ] **Step 3: Implement groups CRUD UI and the remaining protected pages**
+- [x] **Step 3: Implement groups CRUD UI and the remaining protected pages**
 
 ```tsx
 // apps/web/src/components/group-form.tsx
@@ -1658,7 +1658,7 @@ function SettingsPage() {
 }
 ```
 
-- [ ] **Step 4: Run tests and full verification**
+- [x] **Step 4: Run tests and full verification**
 
 Run: `pnpm exec vitest run --config apps/web/vitest.config.ts apps/web/src/components/group-form.test.tsx apps/web/src/components/admin-password-form.test.tsx`  
 Expected: PASS

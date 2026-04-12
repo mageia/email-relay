@@ -16,7 +16,7 @@
 - Create: `apps/web/src/components/operations-mailbox-backfill.tsx`
 - Test: `apps/web/src/components/operations-mailbox-backfill.test.tsx`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
   ```tsx
   import { render, screen } from "@testing-library/react";
   import { describe, expect, it, vi } from "vitest";
@@ -44,7 +44,7 @@
 
 - [ ] **Step 2: Run** `pnpm exec vitest run apps/web/src/components/operations-mailbox-backfill.test.tsx` (expect failure since the component does not exist yet).
 
-- [ ] **Step 3: Implement the mailbox backfill section that clusters each mailbox in a `Card`, surfaces provider/status, embeds `BackfillForm`, and tracks per-mailbox submission state.
+- [x] **Step 3: Implement the mailbox backfill section that clusters each mailbox in a `Card`, surfaces provider/status, embeds `BackfillForm`, and tracks per-mailbox submission state.
   ```tsx
   import { Card, CardContent, CardHeader, CardTitle } from "@email-relay/ui/components/card";
   import { useState } from "react";
@@ -113,7 +113,7 @@
   }
   ```
 
-- [ ] **Step 4: Run** `pnpm exec vitest run apps/web/src/components/operations-mailbox-backfill.test.tsx` (expect PASS).
+- [x] **Step 4: Run** `pnpm exec vitest run apps/web/src/components/operations-mailbox-backfill.test.tsx` (expect PASS).
 - [ ] **Step 5: Stage the changes** `git add apps/web/src/components/operations-mailbox-backfill.tsx apps/web/src/components/operations-mailbox-backfill.test.tsx`.
 
 ### Task 2: Build the group backfill section for `/operations`
@@ -122,7 +122,7 @@
 - Create: `apps/web/src/components/operations-group-backfill.tsx`
 - Test: `apps/web/src/components/operations-group-backfill.test.tsx`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
   ```tsx
   import { render, screen } from "@testing-library/react";
   import { describe, expect, it, vi } from "vitest";
@@ -150,7 +150,7 @@
 
 - [ ] **Step 2: Run** `pnpm exec vitest run apps/web/src/components/operations-group-backfill.test.tsx` (expect failure because the component does not exist).
 
-- [ ] **Step 3: Implement the group section with cards + `BackfillForm` and per-group pending tracking.
+- [x] **Step 3: Implement the group section with cards + `BackfillForm` and per-group pending tracking.
   ```tsx
   import { Card, CardContent, CardHeader, CardTitle } from "@email-relay/ui/components/card";
   import { useState } from "react";
@@ -208,7 +208,7 @@
   }
   ```
 
-- [ ] **Step 4: Run** `pnpm exec vitest run apps/web/src/components/operations-group-backfill.test.tsx` (expect PASS).
+- [x] **Step 4: Run** `pnpm exec vitest run apps/web/src/components/operations-group-backfill.test.tsx` (expect PASS).
 - [ ] **Step 5: Stage the component/test files** `git add apps/web/src/components/operations-group-backfill.tsx apps/web/src/components/operations-group-backfill.test.tsx`.
 
 ### Task 3: Upgrade `/operations` route to assemble summary + sections
@@ -216,7 +216,7 @@
 **Files:**
 - Modify: `apps/web/src/routes/_protected/operations.tsx`
 
-- [ ] **Step 1: Update the route to pull alerts/mailboxes/groups, reuse `AlertSummaryCards`, import the new sections, and convert the date ranges when hitting `client.operations`. Use toasts for basic user feedback.
+- [x] **Step 1: Update the route to pull alerts/mailboxes/groups, reuse `AlertSummaryCards`, import the new sections, and convert the date ranges when hitting `client.operations`. Use toasts for basic user feedback.
   ```tsx
   import { useQuery } from "@tanstack/react-query";
   import { createFileRoute } from "@tanstack/react-router";
@@ -320,7 +320,7 @@
   }
   ```
 
-- [ ] **Step 2: Run** `pnpm exec vitest run apps/web/src/components/operations-mailbox-backfill.test.tsx apps/web/src/components/operations-group-backfill.test.tsx` to ensure the helper tests still pass when the page imports them.
+- [x] **Step 2: Run** `pnpm exec vitest run apps/web/src/components/operations-mailbox-backfill.test.tsx apps/web/src/components/operations-group-backfill.test.tsx` to ensure the helper tests still pass when the page imports them.
 - [ ] **Step 3: Stage the operations route update** `git add apps/web/src/routes/_protected/operations.tsx`.
 
 ### Task 4: Commit all files

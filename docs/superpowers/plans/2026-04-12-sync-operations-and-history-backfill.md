@@ -118,7 +118,7 @@ describe("toSyncAlertInput", () => {
 Run: `pnpm exec vitest run packages/mail/src/sync/retry.test.ts packages/api/src/operations/alerts.test.ts`  
 Expected: FAIL with missing module errors
 
-- [ ] **Step 3: Implement retry helpers, alert helpers, and sync job fields**
+- [x] **Step 3: Implement retry helpers, alert helpers, and sync job fields**
 
 ```ts
 // packages/mail/src/sync/retry.ts
@@ -210,7 +210,7 @@ try {
 }
 ```
 
-- [ ] **Step 4: Verify tests, migrations, and type checks**
+- [x] **Step 4: Verify tests, migrations, and type checks**
 
 Run: `pnpm exec vitest run packages/mail/src/sync/retry.test.ts packages/api/src/operations/alerts.test.ts`  
 Expected: PASS
@@ -297,7 +297,7 @@ describe("enqueueMailboxBackfill", () => {
 Run: `pnpm exec vitest run packages/mail/src/sync/history-backfill.test.ts packages/api/src/operations/backfill.test.ts`  
 Expected: FAIL with missing module errors
 
-- [ ] **Step 3: Implement backfill helpers, operations router, and UI**
+- [x] **Step 3: Implement backfill helpers, operations router, and UI**
 
 ```ts
 // packages/mail/src/sync/history-backfill.ts
@@ -472,7 +472,7 @@ it("searches messages through the FTS query when a search term is provided", asy
 Run: `pnpm exec vitest run packages/api/src/inbox/repository.test.ts`  
 Expected: FAIL because the FTS-aware search path does not exist yet
 
-- [ ] **Step 3: Add the FTS migration and search-aware repository path**
+- [x] **Step 3: Add the FTS migration and search-aware repository path**
 
 ```sql
 -- packages/db/src/migrations/<timestamp>_mail_message_fts.sql
@@ -600,7 +600,7 @@ describe("AlertSummaryCards", () => {
 Run: `pnpm exec vitest run --config apps/web/vitest.config.ts apps/web/src/components/alert-summary-cards.test.tsx`  
 Expected: FAIL because the summary card component does not exist
 
-- [ ] **Step 3: Implement summary cards, alert actions, and stale-sync scanning**
+- [x] **Step 3: Implement summary cards, alert actions, and stale-sync scanning**
 
 ```tsx
 // apps/web/src/components/alert-summary-cards.tsx
@@ -670,7 +670,7 @@ git commit -m "feat: add sync operations dashboard"
 **Files:**
 - Modify: `README.md`
 
-- [ ] **Step 1: Document operations runbooks**
+- [x] **Step 1: Document operations runbooks**
 
 ```md
 ## Sync operations

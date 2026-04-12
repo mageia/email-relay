@@ -3,6 +3,16 @@
 ## 项目概览
 email-relay 是一个将 Gmail / Outlook / IMAP 邮箱统一拉入 Cloudflare Workers 的同步平台，前端通过 TanStack Router + shadcn/ui 提供管理控制台，后端在 Worker 中通过 Drizzle 访问 D1、通过 Cloudflare Queue 调度 `mail-sync` 队列，借助 Cloudflare Cron 维持观察、告警和重试。
 
+## 计划执行状态
+- 当前 2026-04-12 这批 implementation plan 的主要编码切片已经落地，最新审计见 `docs/superpowers/plans/2026-04-12-implementation-status.md`。
+- 仍待完成的主要是 **真实 Cloudflare / OAuth / Queue / Cron 的生产验收**，以及是否回填各计划文件中的 checkbox。
+
+## 接入与运维手册
+- Gmail：`docs/runbooks/gmail-setup.md`
+- Outlook / Microsoft 365：`docs/runbooks/outlook-setup.md`
+- 通用 IMAP：`docs/runbooks/imap-setup.md`
+- Sync Operations：`docs/runbooks/sync-operations.md`
+
 ## 管理员密码与环境变量约定
 ### 管理员密码
 - 初次登录管理后台（`POST /admin/login`）必须提供 `ADMIN_BOOTSTRAP_PASSWORD` 作为密码，顺利登陆后会在响应里设置 `admin-session` cookie。上线后请在密钥管理平台（如 Alchemy secrets）中设置该变量，并避免在源码或提交中暴露这个值。

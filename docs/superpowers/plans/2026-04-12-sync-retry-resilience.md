@@ -15,7 +15,7 @@
 **Files:**
 - Modify: `apps/server/src/mail/queue.ts`
 
-- [ ] **Step 1: Pull in Drizzle helpers and add job-claim/complete helpers**
+- [x] **Step 1: Pull in Drizzle helpers and add job-claim/complete helpers**
 
 ```ts
 import { asc, eq, or } from "drizzle-orm";
@@ -76,7 +76,7 @@ async function finalizeSyncJobSuccess(db, job: SyncJobRow | null) {
 }
 ```
 
-- [ ] **Step 2: Structure the `for` loop so every message claims the job, uses try/catch, and calls a completion helper before acking**
+- [x] **Step 2: Structure the `for` loop so every message claims the job, uses try/catch, and calls a completion helper before acking**
 
 ```ts
 for (const message of batch.messages) {
@@ -95,7 +95,7 @@ for (const message of batch.messages) {
 }
 ```
 
-- [ ] **Step 3: In the catch block classify the error, update `sync_job` metadata, promote non-retryable alerts, ack the message, and continue**
+- [x] **Step 3: In the catch block classify the error, update `sync_job` metadata, promote non-retryable alerts, ack the message, and continue**
 
 ```ts
   catch (rawError) {
@@ -130,7 +130,7 @@ for (const message of batch.messages) {
   }
 ```
 
-- [ ] **Step 4: Run the existing helper suites to confirm no regressions**
+- [x] **Step 4: Run the existing helper suites to confirm no regressions**
 
 Run: `pnpm exec vitest run packages/mail/src/sync/retry.test.ts packages/api/src/operations/alerts.test.ts`
 Expected: PASS
@@ -140,7 +140,7 @@ Expected: PASS
 **Files:**
 - Modify: `apps/server/src/mail/scheduled.ts`
 
-- [ ] **Step 1: Query `retry-scheduled` jobs whose `nextAttemptAt` is in the past and rebuild payloads with `buildBackfillPayloads`**
+- [x] **Step 1: Query `retry-scheduled` jobs whose `nextAttemptAt` is in the past and rebuild payloads with `buildBackfillPayloads`**
 
 ```ts
 import { sql } from "drizzle-orm";
@@ -171,7 +171,7 @@ for (const job of retryJobs) {
   await queue.send(payload);
 ```
 
-- [ ] **Step 2: After sending, mark the job `queued` again and clear `nextAttemptAt` so the scheduled loop stops hitting it**
+- [x] **Step 2: After sending, mark the job `queued` again and clear `nextAttemptAt` so the scheduled loop stops hitting it**
 
 ```ts
   await db
@@ -185,7 +185,7 @@ for (const job of retryJobs) {
 }
 ```
 
-- [ ] **Step 3: Run the type checker to ensure the new Drizzle usage stays sound with TypeScript**
+- [x] **Step 3: Run the type checker to ensure the new Drizzle usage stays sound with TypeScript**
 
 Run: `pnpm run check-types`
 Expected: PASS
