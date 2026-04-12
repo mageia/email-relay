@@ -1,6 +1,7 @@
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 
+import { imapMailboxState } from "@email-relay/db/schema/imap";
 import { mailbox } from "@email-relay/db/schema/mail";
 import { mailboxFolder } from "@email-relay/db/schema/provider";
 import {
@@ -98,6 +99,27 @@ export const mailboxesRouter = {
             : undefined,
       });
     }),
+  getImapSettings: protectedProcedure
+    .input(
+      z.object({
+        mailboxId: z.string().min(1),
+      }),
+    )
+    .handler(async ({ context, input }) => {
+      const rows = await context.db
+        .select({
+          username: imapMailboxState.username,
+          host: imapMailboxState.host,
+          port: imapMailboxState.port,
+          secure: imapMailboxState.secure,
+          discoverySource: imapMailboxState.discoverySource,
+        })
+        .from(imapMailboxState)
+        .where(eq(imapMailboxState.mailboxId, input.mailboxId))
+        .limit(1);
+
+      return rows[0] ?? null;
+    }),
   validateImap: protectedProcedure
     .input(
       z.object({
@@ -157,6 +179,33 @@ export const mailboxesRouter = {
 
       return mailboxRecord;
     }),
+  updateImapSettings: protectedProcedure
+    .input(
+      z.object({
+        mailboxId: z.string().min(1),
+        username: z.string().min(1),
+        host: z.string().min(1),
+        port: z.number().int().positive(),
+        secure: z.boolean(),
+        labels: z.array(
+          z.object({
+            id: z.string(),
+            name: z.string(),
+            kind: z.string(),
+          }),
+        ),
+      }),
+    )
+    .handler(({ context, input }) =>
+      createMailboxRepository(context.db).updateImapMailboxSettings({
+        mailboxId: input.mailboxId,
+        username: input.username,
+        host: input.host,
+        port: input.port,
+        secure: input.secure,
+        selectedFolders: input.labels,
+      }),
+    ),
   updateSelectedFolders: protectedProcedure
     .input(
       z.object({

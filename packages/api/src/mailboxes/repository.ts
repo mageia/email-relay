@@ -12,34 +12,35 @@ type ImapFolder = { id: string; name: string; kind: string; selected: boolean };
 type MailboxRepositoryDeps =
   | any
   | {
-      insertMailbox: (row: { address: string; provider: string; authType: string; status: string; selectedFoldersJson: string }) => Promise<any>;
-      insertFolders: (rows: Array<{ mailboxId: string; providerFolderId: string; displayName: string; kind: string; selected: boolean }>) => Promise<void>;
+      insertMailbox?: (row: { address: string; provider: string; authType: string; status: string; selectedFoldersJson: string }) => Promise<any>;
+      insertFolders?: (rows: Array<{ mailboxId: string; providerFolderId: string; displayName: string; kind: string; selected: boolean }>) => Promise<void>;
       insertGmailState?: (row: { mailboxId: string; gmailAddress: string }) => Promise<void>;
+      updateImapState?: (mailboxId: string, patch: { username: string; host: string; port: number; secure: boolean }) => Promise<void>;
+      replaceSelectedFolders?: (mailboxId: string, labels: GmailLabel[]) => Promise<void>;
     };
 
-function isStubDeps(deps: MailboxRepositoryDeps): deps is {
-  insertMailbox: (row: { address: string; provider: string; authType: string; status: string; selectedFoldersJson: string }) => Promise<any>;
-  insertFolders: (rows: Array<{ mailboxId: string; providerFolderId: string; displayName: string; kind: string; selected: boolean }>) => Promise<void>;
-  insertGmailState?: (row: { mailboxId: string; gmailAddress: string }) => Promise<void>;
-} {
-  return typeof (deps as { insertMailbox?: unknown }).insertMailbox === "function";
+function isStubDeps(deps: MailboxRepositoryDeps): deps is NonNullable<MailboxRepositoryDeps> {
+  return typeof deps === "object" && deps !== null && ("insertMailbox" in deps || "updateImapState" in deps || "replaceSelectedFolders" in deps);
+}
+
+function toSelectedFolderIds(labels: GmailLabel[]) {
+  return JSON.stringify(labels.map((label) => label.id));
 }
 
 export function createMailboxRepository(db: MailboxRepositoryDeps) {
   return {
     async createGmailMailbox(input: { address: string; selectedLabels: GmailLabel[] }) {
-      if (isStubDeps(db)) {
+      if (isStubDeps(db) && db.insertMailbox && db.insertFolders) {
         const createdMailbox = {
           id: crypto.randomUUID(),
           address: input.address,
           provider: "gmail",
           authType: "oauth",
           status: "active",
-          selectedFoldersJson: JSON.stringify(input.selectedLabels.map((label) => label.id)),
+          selectedFoldersJson: toSelectedFolderIds(input.selectedLabels),
         };
 
         await db.insertMailbox(createdMailbox);
-
         await db.insertFolders(
           input.selectedLabels.map((label) => ({
             mailboxId: createdMailbox.id,
@@ -49,7 +50,6 @@ export function createMailboxRepository(db: MailboxRepositoryDeps) {
             selected: true,
           })),
         );
-
         await db.insertGmailState?.({
           mailboxId: createdMailbox.id,
           gmailAddress: input.address,
@@ -65,7 +65,7 @@ export function createMailboxRepository(db: MailboxRepositoryDeps) {
           provider: "gmail",
           authType: "oauth",
           status: "active",
-          selectedFoldersJson: JSON.stringify(input.selectedLabels.map((label) => label.id)),
+          selectedFoldersJson: toSelectedFolderIds(input.selectedLabels),
         })
         .returning();
 
@@ -87,20 +87,15 @@ export function createMailboxRepository(db: MailboxRepositoryDeps) {
       return createdMailbox;
     },
 
-    async createOutlookMailbox(input: {
-      address: string;
-      selectedFolders: OutlookFolder[];
-    }) {
-      if (isStubDeps(db)) {
+    async createOutlookMailbox(input: { address: string; selectedFolders: OutlookFolder[] }) {
+      if (isStubDeps(db) && db.insertMailbox && db.insertFolders) {
         const createdMailbox = {
           id: crypto.randomUUID(),
           address: input.address,
           provider: "outlook",
           authType: "oauth",
           status: "active",
-          selectedFoldersJson: JSON.stringify(
-            input.selectedFolders.filter((folder) => folder.selected).map((folder) => folder.id),
-          ),
+          selectedFoldersJson: JSON.stringify(input.selectedFolders.filter((folder) => folder.selected).map((folder) => folder.id)),
         };
 
         await db.insertMailbox(createdMailbox);
@@ -124,9 +119,7 @@ export function createMailboxRepository(db: MailboxRepositoryDeps) {
           provider: "outlook",
           authType: "oauth",
           status: "active",
-          selectedFoldersJson: JSON.stringify(
-            input.selectedFolders.filter((folder) => folder.selected).map((folder) => folder.id),
-          ),
+          selectedFoldersJson: JSON.stringify(input.selectedFolders.filter((folder) => folder.selected).map((folder) => folder.id)),
         })
         .returning();
 
@@ -165,9 +158,7 @@ export function createMailboxRepository(db: MailboxRepositoryDeps) {
           provider: "imap",
           authType: input.authType,
           status: "active",
-          selectedFoldersJson: JSON.stringify(
-            input.selectedFolders.filter((folder) => folder.selected).map((folder) => folder.id),
-          ),
+          selectedFoldersJson: JSON.stringify(input.selectedFolders.filter((folder) => folder.selected).map((folder) => folder.id)),
         })
         .returning();
 
@@ -196,7 +187,7 @@ export function createMailboxRepository(db: MailboxRepositoryDeps) {
     },
 
     async listMailboxes() {
-      if (isStubDeps(db)) {
+      if (isStubDeps(db) && !('select' in db)) {
         return [];
       }
 
@@ -204,7 +195,8 @@ export function createMailboxRepository(db: MailboxRepositoryDeps) {
     },
 
     async replaceSelectedLabels(mailboxId: string, labels: GmailLabel[]) {
-      if (isStubDeps(db)) {
+      if (isStubDeps(db) && db.replaceSelectedFolders) {
+        await db.replaceSelectedFolders(mailboxId, labels);
         return;
       }
 
@@ -221,9 +213,42 @@ export function createMailboxRepository(db: MailboxRepositoryDeps) {
       await db
         .update(mailbox)
         .set({
-          selectedFoldersJson: JSON.stringify(labels.map((label) => label.id)),
+          selectedFoldersJson: toSelectedFolderIds(labels),
         })
         .where(eq(mailbox.id, mailboxId));
+    },
+
+    async updateImapMailboxSettings(input: {
+      mailboxId: string;
+      username: string;
+      host: string;
+      port: number;
+      secure: boolean;
+      selectedFolders: GmailLabel[];
+    }) {
+      if (isStubDeps(db) && db.updateImapState && db.replaceSelectedFolders) {
+        await db.updateImapState(input.mailboxId, {
+          username: input.username,
+          host: input.host,
+          port: input.port,
+          secure: input.secure,
+        });
+        await db.replaceSelectedFolders(input.mailboxId, input.selectedFolders);
+        return;
+      }
+
+      await db
+        .update(imapMailboxState)
+        .set({
+          username: input.username,
+          host: input.host,
+          port: input.port,
+          secure: input.secure,
+          updatedAt: new Date(),
+        })
+        .where(eq(imapMailboxState.mailboxId, input.mailboxId));
+
+      await this.replaceSelectedLabels(input.mailboxId, input.selectedFolders);
     },
   };
 }
