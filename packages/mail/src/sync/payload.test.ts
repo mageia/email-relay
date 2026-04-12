@@ -25,3 +25,14 @@ it("accepts an Outlook delta payload", () => {
     }),
   ).toMatchObject({ provider: "outlook", mailboxId: "mailbox-2" });
 });
+
+it("accepts an IMAP poll payload", () => {
+  expect(
+    MailSyncPayloadSchema.parse({
+      provider: "imap",
+      mailboxId: "mailbox-3",
+      reason: "imap-poll",
+      folderIds: ["INBOX"],
+    }),
+  ).toMatchObject({ provider: "imap", mailboxId: "mailbox-3" });
+});

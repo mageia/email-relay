@@ -7,6 +7,8 @@ export * from "./gmail/oauth";
 export * from "./gmail/oauth-state";
 export * from "./gmail/profile";
 export * from "./gmail/watch";
+export * from "./imap/constants";
+export * from "./imap/discovery";
 export * from "./outlook/constants";
 export * from "./outlook/delta";
 export * from "./outlook/folders";

@@ -20,6 +20,13 @@ export const MailSyncPayloadSchema = z.discriminatedUnion("provider", [
     deltaLink: z.string().optional(),
     folderIds: z.array(z.string()).optional(),
   }),
+  z.object({
+    provider: z.literal("imap"),
+    mailboxId: z.string().min(1),
+    reason: z.enum(["imap-initial", "imap-poll", "imap-backfill"]),
+    folderIds: z.array(z.string()).optional(),
+    pageToken: z.string().optional(),
+  }),
 ]);
 
 export type MailSyncPayload = z.infer<typeof MailSyncPayloadSchema>;
