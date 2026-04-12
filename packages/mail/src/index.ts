@@ -26,3 +26,4 @@ export * from "./outlook/subscription";
 export * from "./storage/mailbox-credentials";
 export * from "./storage/message-upserts";
 export * from "./sync/payload";
+export * from "./sync/retry";
