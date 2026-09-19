@@ -3,7 +3,10 @@ import Field from "@email-relay/ui/components/field";
 import { Input } from "@email-relay/ui/components/input";
 import { Label } from "@email-relay/ui/components/label";
 import { PanelBody } from "@email-relay/ui/components/panel";
+import { ExternalLinkIcon, InfoIcon } from "lucide-react";
 import { useMemo, useState } from "react";
+
+import { findImapSetupHint } from "@/lib/imap-setup-hints";
 
 export type ConnectImapValue = {
   email: string;
@@ -82,6 +85,11 @@ export default function ConnectImapForm({
   const errors = useMemo(() => validateConnectImapForm(value), [value]);
   const hasErrors = Object.values(errors).some(Boolean);
 
+  /* Surfaces the provider-specific requirement as soon as the domain is known.
+     Most providers reject the account password over IMAP and need a separately
+     generated app password, which is the single biggest cause of failed setup. */
+  const hint = useMemo(() => findImapSetupHint(value.email), [value.email]);
+
   return (
     <form
       onSubmit={(event) => {
@@ -101,6 +109,30 @@ export default function ConnectImapForm({
       }}
     >
       <PanelBody className="flex flex-col gap-3.5">
+        {hint?.requiresAppPassword ? (
+          <div className="flex items-start gap-2 rounded-sm border border-info-border bg-info-muted px-2.5 py-2">
+            <InfoIcon aria-hidden="true" className="mt-0.5 size-3.5 shrink-0 text-brand" />
+            <div className="min-w-0 text-[0.6875rem] leading-relaxed">
+              <div className="font-medium text-foreground">
+                该邮箱需要使用应用专用密码
+              </div>
+              {hint.note ? (
+                <p className="mt-0.5 text-muted-foreground">{hint.note}</p>
+              ) : null}
+              {hint.appPasswordUrl ? (
+                <a
+                  href={hint.appPasswordUrl}
+                  target="_blank"
+                  rel="noreferrer noopener"
+                  className="mt-1 inline-flex items-center gap-1 text-brand hover:underline"
+                >
+                  前往生成应用专用密码
+                  <ExternalLinkIcon aria-hidden="true" className="size-3" />
+                </a>
+              ) : null}
+            </div>
+          </div>
+        ) : null}
         <div className="grid gap-3.5 md:grid-cols-2">
           <Field id="email" label="邮箱地址" error={errors.email} required>
             <Input
