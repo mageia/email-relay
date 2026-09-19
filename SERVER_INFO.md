@@ -24,7 +24,13 @@ email-relay 是 Cloudflare Workers 应用，由 Alchemy（IaC）部署到 Cloudf
 
 - Server：`https://email-relay-server-mageia.mageia.workers.dev`
 - Web：`https://email-relay-web-mageia.mageia.workers.dev`
-- 自定义域（OAuth 回调实际使用）：`https://mail-api.rateflow.site`
+
+当前**没有自定义域**，全部走 workers.dev。
+
+曾绑定 `mail-api.rateflow.site`（server）与 `mail.rateflow.site`（web），但该域名
+已不可用：NS 指向 GoDaddy（`ns77/ns78.domaincontrol.com`）而非 Cloudflare，A 记录
+解析到 `198.18.46.x`（RFC 2544 保留段，不可路由），TLS 握手直接失败。两个绑定已于
+2026-09-19 通过 Workers domains API 解除，相关环境变量已改为 workers.dev。
 
 ## 部署命令
 
@@ -72,11 +78,29 @@ Cloudflare API 本身无问题：同一 PATCH 请求用 curl 返回 200 且 `suc
 
 当前配置状态（仅记录是否已填，不记录值）：
 
-- 已配置真实值：Cloudflare、Alchemy、通用（`CORS_ORIGIN`、`BETTER_AUTH_*`、
-  `VITE_SERVER_URL`）、管理员与加密三项、Gmail 全部五项
+- 已配置真实值：Cloudflare、Alchemy、管理员与加密三项、Gmail 全部五项
 - **仍为占位符**：`MICROSOFT_CLIENT_ID`、`MICROSOFT_CLIENT_SECRET`、
-  `MICROSOFT_OAUTH_REDIRECT_URL`、`MICROSOFT_NOTIFICATION_SECRET`。
-  Gmail 与 IMAP 不受影响，但 **Outlook 接入会失败**，需填入真实值后重新部署。
+  `MICROSOFT_NOTIFICATION_SECRET`。Gmail 与 IMAP 不受影响，但
+  **Outlook 接入会失败**，需填入真实值后重新部署。
+
+URL 类变量当前一律指向 workers.dev（2026-09-19 从失效的 rateflow.site 切换）：
+
+| 变量 | 值 |
+| --- | --- |
+| `VITE_SERVER_URL` / `BETTER_AUTH_URL` | `https://email-relay-server-mageia.mageia.workers.dev` |
+| `CORS_ORIGIN` | `https://email-relay-web-mageia.mageia.workers.dev` |
+| `GOOGLE_OAUTH_REDIRECT_URL` | `…workers.dev/oauth/gmail/callback` |
+| `MICROSOFT_OAUTH_REDIRECT_URL` | `…workers.dev/oauth/outlook/callback` |
+
+`GOOGLE_GMAIL_PUBSUB_TOPIC` 中的 `rateflow-481905` 是 Google Cloud 项目 ID，与
+失效的 rateflow.site 域名无关，**保持不变**。
+
+注意 `apps/server/.env` 与 `apps/web/.env` 也各自含 URL 变量，但部署时以仓库根
+`.env` 为准（`alchemy.run.ts` 按根 `.env` → 各子 `.env` 顺序加载，先加载者优先）。
+
+> **改域名后必须同步更新 Google Cloud Console 的 OAuth 重定向 URI 白名单**，
+> 否则 Gmail 授权会因 `redirect_uri_mismatch` 失败。该操作在 GCP 控制台，
+> 不由本仓库管理。
 
 ## 数据库迁移
 
@@ -101,7 +125,7 @@ DELETE 未删除任何数据。
 ```
 GET  /                                          -> 200 "OK"
 GET  /admin/session（未登录）                    -> 401 {"authenticated":false}
-GET  /oauth/gmail/start                          -> 302 accounts.google.com（redirect_uri 指向 mail-api.rateflow.site）
+GET  /oauth/gmail/start                          -> 302 accounts.google.com（redirect_uri 指向 workers.dev）
 GET  /webhooks/outlook/notifications?validationToken=probe-12345
                                                  -> 200 原样回显 probe-12345
 POST /webhooks/gmail/push?token=<错误值>          -> 403
