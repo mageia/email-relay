@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { integer, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
 
 import { mailbox } from "./mail";
 
@@ -24,20 +24,26 @@ export const imapMailboxState = sqliteTable("imap_mailbox_state", {
     .notNull(),
 });
 
-export const imapFolderCursor = sqliteTable("imap_folder_cursor", {
-  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
-  mailboxId: text("mailbox_id")
-    .notNull()
-    .references(() => mailbox.id, { onDelete: "cascade" }),
-  folderId: text("folder_id").notNull(),
-  uidValidity: text("uid_validity"),
-  lastSeenUid: integer("last_seen_uid"),
-  lastPolledAt: integer("last_polled_at", { mode: "timestamp_ms" }),
-  createdAt: integer("created_at", { mode: "timestamp_ms" })
-    .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
-    .notNull(),
-  updatedAt: integer("updated_at", { mode: "timestamp_ms" })
-    .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
-    .$onUpdate(() => new Date())
-    .notNull(),
-});
+export const imapFolderCursor = sqliteTable(
+  "imap_folder_cursor",
+  {
+    id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+    mailboxId: text("mailbox_id")
+      .notNull()
+      .references(() => mailbox.id, { onDelete: "cascade" }),
+    folderId: text("folder_id").notNull(),
+    uidValidity: text("uid_validity"),
+    lastSeenUid: integer("last_seen_uid"),
+    lastPolledAt: integer("last_polled_at", { mode: "timestamp_ms" }),
+    createdAt: integer("created_at", { mode: "timestamp_ms" })
+      .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+      .notNull(),
+    updatedAt: integer("updated_at", { mode: "timestamp_ms" })
+      .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  // One cursor row per mailbox+folder. Previously every poll appended a row and
+  // readers relied on reverse().find(), so the table grew without bound.
+  (table) => [uniqueIndex("imap_folder_cursor_mailbox_folder_idx").on(table.mailboxId, table.folderId)],
+);

@@ -1,3 +1,4 @@
+import { eq } from "drizzle-orm";
 import { createDb } from "@email-relay/db";
 import { outlookMailboxState } from "@email-relay/db/schema/outlook";
 
@@ -30,13 +31,16 @@ export async function handleOutlookWebhook(request: Request, env: Env) {
   }
 
   const db = createDb();
-  const states = await db.select().from(outlookMailboxState);
 
   for (const item of body.value) {
-    const state = states.find(
-      (entry: { subscriptionId?: string | null; mailboxId: string; deltaLink?: string | null }) =>
-        entry.subscriptionId === item.subscriptionId,
-    );
+    const [state] = await db
+      .select({
+        mailboxId: outlookMailboxState.mailboxId,
+        deltaLink: outlookMailboxState.deltaLink,
+      })
+      .from(outlookMailboxState)
+      .where(eq(outlookMailboxState.subscriptionId, item.subscriptionId))
+      .limit(1);
     if (!state) {
       continue;
     }

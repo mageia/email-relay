@@ -84,10 +84,11 @@ export const operationsRouter = {
       }),
     )
     .handler(async ({ context, input }) => {
-      const mailboxes = await context.db.select().from(mailbox);
-      const mailboxRow = mailboxes.find(
-        (entry: { id: string; provider: "gmail" | "outlook" | "imap" }) => entry.id === input.mailboxId,
-      );
+      const [mailboxRow] = await context.db
+        .select({ id: mailbox.id, provider: mailbox.provider })
+        .from(mailbox)
+        .where(eq(mailbox.id, input.mailboxId))
+        .limit(1);
       if (!mailboxRow) {
         throw new Error("Mailbox not found");
       }

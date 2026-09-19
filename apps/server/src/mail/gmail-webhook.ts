@@ -1,3 +1,4 @@
+import { and, eq } from "drizzle-orm";
 import { createDb } from "@email-relay/db";
 import { mailbox } from "@email-relay/db/schema/mail";
 
@@ -12,11 +13,11 @@ export async function handleGmailWebhook(request: Request, env: Env) {
   const body = (await request.json()) as { message?: { data?: string } };
   const decoded = decodeGmailPushBody(body);
   const db = createDb();
-  const mailboxes = await db.select().from(mailbox);
-  const mailboxRow = mailboxes.find(
-    (entry: { provider: string; address: string; id: string }) =>
-      entry.provider === "gmail" && entry.address === decoded.emailAddress,
-  );
+  const [mailboxRow] = await db
+    .select({ id: mailbox.id })
+    .from(mailbox)
+    .where(and(eq(mailbox.provider, "gmail"), eq(mailbox.address, decoded.emailAddress)))
+    .limit(1);
 
   if (!mailboxRow) {
     return new Response("Ignored", { status: 202 });

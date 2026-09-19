@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { index, integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { index, integer, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
 
 export const mailboxGroup = sqliteTable("mailbox_group", {
   id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
@@ -61,7 +61,16 @@ export const mailMessage = sqliteTable(
       .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
       .notNull(),
   },
-  (table) => [index("mail_message_mailbox_received_idx").on(table.mailboxId, table.receivedAt)],
+  (table) => [
+    index("mail_message_mailbox_received_idx").on(table.mailboxId, table.receivedAt),
+    // Required for upsertNormalizedMessage's onConflictDoUpdate target. Without it,
+    // redelivered queue messages (self-paging, webhook replays, cron overlap) insert
+    // duplicate rows and duplicate FTS entries.
+    uniqueIndex("mail_message_mailbox_provider_message_idx").on(
+      table.mailboxId,
+      table.providerMessageId,
+    ),
+  ],
 );
 
 export const syncJob = sqliteTable("sync_job", {

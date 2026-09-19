@@ -32,7 +32,11 @@ function measureContentSize(content?: ArrayBuffer | Uint8Array | string) {
 
 export async function normalizeImapMessage(input: {
   uid: number;
-  raw: string;
+  /**
+   * Raw RFC822 bytes. Bytes rather than a string so postal-mime can honour the
+   * charset declared in the headers instead of assuming UTF-8.
+   */
+  raw: Uint8Array | ArrayBuffer | string;
   folderId: string;
   internalDate: Date;
 }) {

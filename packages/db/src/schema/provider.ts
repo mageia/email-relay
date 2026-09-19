@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { index, integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { index, integer, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
 
 import { mailbox } from "./mail";
 
@@ -24,7 +24,12 @@ export const mailboxCredential = sqliteTable(
       .$onUpdate(() => new Date())
       .notNull(),
   },
-  (table) => [index("mailbox_credential_mailbox_idx").on(table.mailboxId)],
+  (table) => [
+    index("mailbox_credential_mailbox_idx").on(table.mailboxId),
+    // One credential row per mailbox+provider so token refreshes update in place
+    // instead of appending a new row on every save.
+    uniqueIndex("mailbox_credential_mailbox_provider_idx").on(table.mailboxId, table.provider),
+  ],
 );
 
 export const mailboxFolder = sqliteTable("mailbox_folder", {

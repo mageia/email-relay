@@ -64,11 +64,14 @@ email-relay 是一个将 Gmail / Outlook / IMAP 邮箱统一拉入 Cloudflare Wo
 ## 历史补拉
 后台通过 `packages/api/src/operations/backfill.ts` 和前端 `operations` 页面协调：
 - 操作页面或分组列表提交日期范围后，服务器调用 `buildBackfillPayloads`，生成 provider-agnostic 的 `mail-sync` payload（reason 包括 `gmail-backfill`、`outlook-backfill`、`imap-backfill`），并创建 `syncJob` 记录 `requestedRangeStart`/`requestedRangeEnd`。
+- payload 中的 `rangeStart`/`rangeEnd` 由 `MailSyncPayloadSchema` 声明并透传给队列消费端，各 provider 按各自方式落实该区间：Gmail 使用 `q=after:<epoch> before:<epoch>`；Outlook 改用 `/me/messages` 的 `receivedDateTime` filter（delta 端点不支持日期过滤）；IMAP 使用 `SINCE`/`BEFORE` 搜索而非 UID 游标。
 - `apps/server/src/mail/queue.ts` 里会把 `reason` 区分为 `history-backfill` 类型，失败时 `handleSyncJobFailure` 会触发 `syncAlert`（高危 `auth-expired`、限流、临时失败）并调度重试。
+- 补拉读取的是历史邮件，因此不会覆盖 Gmail 的增量游标（`lastHistoryId`），也不会把 IMAP 的 `lastSeenUid` 往回拨。
 - Cron 也会扫描 `retry-scheduled` job，把过期的历史补拉重新排队，保证在失败后自动恢复。
 
 ## 告警与重试
-- 所有 `mail-sync` task 都由 `apps/server/src/mail/queue.ts` 处理，`classifySyncError`/`nextRetryDelaySeconds` 控制重试策略：OAuth 过期会标记 `retryable: false` 且创建高严重度 `syncAlert`，其它错误最多重试五次后才会跳出。
+- 所有 `mail-sync` task 都由 `apps/server/src/mail/queue.ts` 处理，`classifySyncError`/`nextRetryDelaySeconds` 控制重试策略：OAuth 过期会标记 `retryable: false` 且创建高严重度 `syncAlert`；可重试的错误通过 `message.retry({ delaySeconds })` 交回 Cloudflare Queue，按 `[30, 60, 120, 300, 900]` 秒退避，累计达到 `MAX_SYNC_ATTEMPTS`（5 次）后标记为 `failed` 并生成告警，不再重排。
+- OAuth access token 在接近过期时由 `getUsableAccessToken` 自动用 refresh token 续期并写回数据库；只有在 refresh token 缺失或已被吊销（`invalid_grant`）时才需要人工重新授权。
 - `syncJob` 表记录每次尝试的 `retryCount`、`status`、`errorCategory`、`nextAttemptAt`，便于判断哪些任务正在退避、失败或已经完成。
 - 当 `syncAlert` 生成后，前端的 `AlertSummaryCards`、`alerts.list`、`alerts.summary` 会同步展示告警数量，管理员可以在 `/alerts` 页面点击 `Resolve` 清理状态。
 
@@ -77,5 +80,14 @@ email-relay 是一个将 Gmail / Outlook / IMAP 邮箱统一拉入 Cloudflare Wo
   1. Gmail：当 watch 快过期或在 15 分钟未更新 (`lastPartialSyncAt`) 时，分别向队列发送 `gmail-renew-watch` 与 `gmail-history` 任务；
   2. Outlook：在订阅快到期前 12 小时，自动发起 `outlook-renew-subscription`；
   3. IMAP：周期性发 `imap-poll`，触发每个 `imapMailboxState` 轮询；
-  4. Retry：扫描 `syncJob` 中 `retry-scheduled` 且 `nextAttemptAt` 已到的 `history-backfill`，调用 `buildBackfillPayloads` 重建 payload，并把 job 重新设为 `queued`。
-- 这些 Cron 事件走向同一个 `MAIL_SYNC_QUEUE`，Queue 的 `handleMailQueue` 会根据 `payload.provider` 调用 Gmail / Outlook / IMAP 的同步逻辑，完成后 `message.ack()` 并更新数据库状态。
+  4. Retry：扫描 `syncJob` 中 `retry-scheduled` 且 `nextAttemptAt` 已到的 `history-backfill`，调用 `buildBackfillPayloads` 重建 payload，并把 job 重新设为 `queued`；已用尽重试预算的 job 直接标记 `failed`，不再重排。
+- 这些 Cron 事件走向同一个 `MAIL_SYNC_QUEUE`，Queue 的 `handleMailQueue` 会根据 `payload.provider` 调用 Gmail / Outlook / IMAP 的同步逻辑，成功后 `message.ack()` 并更新数据库状态；失败且可重试时改为 `message.retry()`，让 Queue 的 `maxRetries` 生效。
+- 邮件落库统一走 `upsertNormalizedMessage`，以 `(mailbox_id, provider_message_id)` 唯一索引做幂等写入，因此队列重投、分页自投或 webhook 重放都不会产生重复邮件。
+
+## 已知限制
+以下为当前实现的已知取舍，不影响邮件完整性，但会影响 `syncJob` 的状态准确度：
+
+- **IMAP 多文件夹补拉的 job 状态**：一次多文件夹补拉只有一条 `syncJob`，但会按文件夹扇出多条续拉消息。最先抽干的文件夹会把这条 job 标记为 `completed`，此后其他文件夹的续拉页不再被该 job 跟踪（邮件仍会全部抓取，失败会进入 `syncAlert`，但不会累计到 job 的 `retryCount`）。
+- **`claimSyncJob` 非原子**：认领采用 select-then-update，并发投递在极窄时序下可能重复认领同一条 job。D1 的串行化降低了概率但未消除。
+- **Outlook 并发刷新**：Microsoft 会轮换 refresh token，多条消息同时发现 token 过期时会各自刷新，数据库为后写入者胜。若保留下来的 refresh token 已失效，会降级为 `invalid_grant` → `auth-expired` 告警，需要人工重新授权。
+- **迁移非幂等**：`0007_sync_dedupe_constraints.sql` 中的 `CREATE UNIQUE INDEX` 未加 `IF NOT EXISTS`，重复执行会报错。该迁移会**删除**重复行，上线前请先备份 D1。

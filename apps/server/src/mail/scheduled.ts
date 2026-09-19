@@ -4,7 +4,11 @@ import { imapMailboxState } from "@email-relay/db/schema/imap";
 import { mailbox, syncAlert, syncJob } from "@email-relay/db/schema/mail";
 import { outlookMailboxState } from "@email-relay/db/schema/outlook";
 import { gmailMailboxState } from "@email-relay/db/schema/provider";
-import { buildBackfillPayloads } from "@email-relay/mail";
+import {
+  buildBackfillPayloads,
+  hasExhaustedRetries,
+  STUCK_JOB_GRACE_SECONDS,
+} from "@email-relay/mail";
 import { selectStaleMailboxAlertCandidates, toSyncAlertInput } from "@email-relay/api/operations/alerts";
 
 export async function handleScheduled(_controller: ScheduledController, env: Env) {
@@ -123,24 +127,48 @@ export async function handleScheduled(_controller: ScheduledController, env: Env
     );
   }
 
+  // Ordinary retries are driven by the queue itself via message.retry(). Cron only
+  // recovers jobs whose queue message was lost, so it waits for a grace period past
+  // nextAttemptAt. Without this every in-flight retry would also be queued here,
+  // producing two concurrent deliveries for the same job.
+  const stuckBefore = now - STUCK_JOB_GRACE_SECONDS * 1000;
   const retryJobs = await db
     .select()
     .from(syncJob)
-    .where(and(eq(syncJob.status, "retry-scheduled"), sql`${syncJob.nextAttemptAt} <= ${now}`));
+    .where(
+      and(eq(syncJob.status, "retry-scheduled"), sql`${syncJob.nextAttemptAt} <= ${stuckBefore}`),
+    );
 
   for (const job of retryJobs as Array<{
     id: string;
     mailboxId?: string | null;
     type: string;
+    retryCount?: number | null;
     requestedRangeStart?: Date | number | null;
     requestedRangeEnd?: Date | number | null;
   }> ) {
+    // Only history-backfill jobs can be rebuilt into a payload here; leave any
+    // other type untouched rather than failing a job this path cannot requeue.
     if (
       job.type !== "history-backfill" ||
       !job.mailboxId ||
       !job.requestedRangeStart ||
       !job.requestedRangeEnd
     ) {
+      continue;
+    }
+
+    // Enforce the retry budget. Without this a permanently failing backfill was
+    // rescheduled every 15 minutes forever.
+    if (hasExhaustedRetries(job.retryCount ?? 0)) {
+      await db
+        .update(syncJob)
+        .set({
+          status: "failed",
+          nextAttemptAt: null,
+          finishedAt: new Date(),
+        })
+        .where(eq(syncJob.id, job.id));
       continue;
     }
 

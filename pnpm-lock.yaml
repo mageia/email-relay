@@ -438,6 +438,9 @@ importers:
       '@email-relay/db':
         specifier: workspace:*
         version: link:../db
+      drizzle-orm:
+        specifier: ^0.45.1
+        version: 0.45.2(@cloudflare/workers-types@4.20260412.1)(@libsql/client@0.15.15)(kysely@0.28.16)
       postal-mime:
         specifier: ^2.7.4
         version: 2.7.4

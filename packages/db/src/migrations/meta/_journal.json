@@ -50,6 +50,13 @@
       "when": 1775987032314,
       "tag": "0006_mail_message_fts",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "6",
+      "when": 1789733661993,
+      "tag": "0007_sync_dedupe_constraints",
+      "breakpoints": true
     }
   ]
 }
