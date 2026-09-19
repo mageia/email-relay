@@ -140,6 +140,27 @@ GET  Web 前端 /                                   -> 200
   mail_message.provider_message_id`
 - 验证用的探针数据已删除，核验后 mailbox / mail_message / mail_message_fts 均为 0 行
 
+### UI 重设计部署（2026-09-19 05:08 UTC，commit 32630f4）
+
+纯前端改动，未触碰数据库：部署后 `d1_migrations` 仍停在 `0007`，未产生新迁移。
+
+线上核验：
+
+```
+Server  GET /                                   -> 200 "OK"
+Server  GET /admin/session（未登录）              -> 401 {"authenticated":false}
+Server  /webhooks/outlook/...?validationToken=…  -> 200 原样回显
+Server  POST /webhooks/gmail/push?token=<错误>   -> 403
+Web     GET /                                    -> 200
+```
+
+前端产物核验（线上 CSS `/assets/index-DhgJC0Tg.css`）：
+
+- `@font-face` 11 条，`Geist Variable` / `Geist Mono Variable` 已声明
+- `Inter Variable` 出现 0 次（此前声明了该字体但从未加载任何字体文件）
+- woff2 可直接访问：`/assets/geist-latin-wght-normal-*.woff2` → 200 `font/woff2`
+- 新语义 token `--brand` / `--success` / `--warning` / `--hairline` 均已进入产物
+
 ## 未验证项
 
 以下内容本次**没有**验证，不应假定其可用：
