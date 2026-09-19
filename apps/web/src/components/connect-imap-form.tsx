@@ -1,6 +1,8 @@
 import { Button } from "@email-relay/ui/components/button";
+import Field from "@email-relay/ui/components/field";
 import { Input } from "@email-relay/ui/components/input";
 import { Label } from "@email-relay/ui/components/label";
+import { PanelBody } from "@email-relay/ui/components/panel";
 import { useMemo, useState } from "react";
 
 export type ConnectImapValue = {
@@ -82,7 +84,6 @@ export default function ConnectImapForm({
 
   return (
     <form
-      className="space-y-4 rounded-xl border p-4"
       onSubmit={(event) => {
         event.preventDefault();
         if (hasErrors) {
@@ -99,64 +100,82 @@ export default function ConnectImapForm({
         });
       }}
     >
-      <div className="space-y-2">
-        <Label htmlFor="email">邮箱地址</Label>
-        <Input
-          aria-invalid={Boolean(errors.email)}
-          id="email"
-          value={value.email}
-          onChange={(event) => setValue((current) => ({ ...current, email: event.target.value }))}
-        />
-        {errors.email ? <p className="text-xs text-red-500">{errors.email}</p> : null}
-      </div>
-      <div className="space-y-2">
-        <Label htmlFor="username">用户名</Label>
-        <Input
-          aria-invalid={Boolean(errors.username)}
-          id="username"
-          value={value.username}
-          onChange={(event) => setValue((current) => ({ ...current, username: event.target.value }))}
-        />
-        {errors.username ? <p className="text-xs text-red-500">{errors.username}</p> : null}
-      </div>
-      <div className="space-y-2">
-        <Label htmlFor="password">密码 / 应用专用密码</Label>
-        <Input
-          aria-invalid={Boolean(errors.password)}
-          id="password"
-          type="password"
-          value={value.password}
-          onChange={(event) => setValue((current) => ({ ...current, password: event.target.value }))}
-        />
-        {errors.password ? <p className="text-xs text-red-500">{errors.password}</p> : null}
-      </div>
-      <div className="grid gap-4 md:grid-cols-2">
-        <div className="space-y-2">
-          <Label htmlFor="host">手动 Host（可选）</Label>
-          <Input
-            aria-invalid={Boolean(errors.host)}
+      <PanelBody className="flex flex-col gap-3.5">
+        <div className="grid gap-3.5 md:grid-cols-2">
+          <Field id="email" label="邮箱地址" error={errors.email} required>
+            <Input
+              value={value.email}
+              onChange={(event) =>
+                setValue((current) => ({ ...current, email: event.target.value }))
+              }
+            />
+          </Field>
+          <Field id="username" label="用户名" error={errors.username} required>
+            <Input
+              value={value.username}
+              onChange={(event) =>
+                setValue((current) => ({ ...current, username: event.target.value }))
+              }
+            />
+          </Field>
+          <Field id="password" label="密码 / 应用专用密码" error={errors.password} required>
+            <Input
+              type="password"
+              value={value.password}
+              onChange={(event) =>
+                setValue((current) => ({ ...current, password: event.target.value }))
+              }
+            />
+          </Field>
+          <Field
             id="host"
-            value={value.host}
-            onChange={(event) => setValue((current) => ({ ...current, host: event.target.value }))}
-          />
-          {errors.host ? <p className="text-xs text-red-500">{errors.host}</p> : null}
+            label="手动 Host（可选）"
+            error={errors.host}
+            hint="留空时按 SRV 记录与常见前缀自动探测"
+          >
+            <Input
+              value={value.host}
+              onChange={(event) =>
+                setValue((current) => ({ ...current, host: event.target.value }))
+              }
+            />
+          </Field>
+          <Field id="port" label="手动 Port（可选）" error={errors.port} hint="默认 993">
+            <Input
+              inputMode="numeric"
+              type="number"
+              value={value.port}
+              onChange={(event) =>
+                setValue((current) => ({ ...current, port: event.target.value }))
+              }
+            />
+          </Field>
+          <div className="flex flex-col gap-1.5">
+            <Label className="text-xs font-medium">连接选项</Label>
+            {/* Native input: the Base UI Checkbox renders a <span
+                role="checkbox">, which toggles twice when nested in a <label>. */}
+            <Label className="flex h-7 cursor-pointer items-center gap-2 text-xs font-normal">
+              <input
+                type="checkbox"
+                className="size-3.5 shrink-0 accent-brand"
+                checked={value.secure}
+                onChange={(event) =>
+                  setValue((current) => ({ ...current, secure: event.target.checked }))
+                }
+              />
+              启用 TLS
+            </Label>
+          </div>
         </div>
-        <div className="space-y-2">
-          <Label htmlFor="port">手动 Port（可选）</Label>
-          <Input
-            aria-invalid={Boolean(errors.port)}
-            id="port"
-            inputMode="numeric"
-            type="number"
-            value={value.port}
-            onChange={(event) => setValue((current) => ({ ...current, port: event.target.value }))}
-          />
-          {errors.port ? <p className="text-xs text-red-500">{errors.port}</p> : null}
-        </div>
-      </div>
-      <Button type="submit" disabled={isSubmitting || hasErrors}>
-        {isSubmitting ? "验证中..." : "验证并连接 IMAP"}
-      </Button>
+        <Button
+          type="submit"
+          variant="brand"
+          className="self-start"
+          disabled={isSubmitting || hasErrors}
+        >
+          {isSubmitting ? "验证中..." : "验证并连接 IMAP"}
+        </Button>
+      </PanelBody>
     </form>
   );
 }

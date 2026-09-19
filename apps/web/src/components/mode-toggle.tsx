@@ -5,24 +5,47 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@email-relay/ui/components/dropdown-menu";
-import { Moon, Sun } from "lucide-react";
+import { CheckIcon, MonitorIcon, MoonIcon, SunIcon } from "lucide-react";
 
 import { useTheme } from "@/components/theme-provider";
 
+const OPTIONS = [
+  { value: "light", label: "浅色", icon: SunIcon },
+  { value: "dark", label: "深色", icon: MoonIcon },
+  { value: "system", label: "跟随系统", icon: MonitorIcon },
+] as const;
+
+/**
+ * Theme switcher.
+ *
+ * This component already existed but was only referenced from an unmounted
+ * header, so the app was permanently locked to dark with no way to change it.
+ * It is now mounted in the AppShell top bar.
+ */
 export function ModeToggle() {
-  const { setTheme } = useTheme();
+  const { theme, setTheme } = useTheme();
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger render={<Button variant="outline" size="icon" />}>
-        <Sun className="h-[1.2rem] w-[1.2rem] scale-100 rotate-0 transition-all dark:scale-0 dark:-rotate-90" />
-        <Moon className="absolute h-[1.2rem] w-[1.2rem] scale-0 rotate-90 transition-all dark:scale-100 dark:rotate-0" />
-        <span className="sr-only">Toggle theme</span>
+      <DropdownMenuTrigger
+        render={<Button variant="ghost" size="icon" aria-label="切换主题" />}
+      >
+        <SunIcon className="size-3.5 dark:hidden" />
+        <MoonIcon className="hidden size-3.5 dark:block" />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        <DropdownMenuItem onClick={() => setTheme("light")}>Light</DropdownMenuItem>
-        <DropdownMenuItem onClick={() => setTheme("dark")}>Dark</DropdownMenuItem>
-        <DropdownMenuItem onClick={() => setTheme("system")}>System</DropdownMenuItem>
+        {OPTIONS.map((option) => {
+          const Icon = option.icon;
+          return (
+            <DropdownMenuItem key={option.value} onClick={() => setTheme(option.value)}>
+              <Icon aria-hidden="true" className="size-3.5" />
+              {option.label}
+              {theme === option.value ? (
+                <CheckIcon aria-hidden="true" className="ml-auto size-3.5" />
+              ) : null}
+            </DropdownMenuItem>
+          );
+        })}
       </DropdownMenuContent>
     </DropdownMenu>
   );

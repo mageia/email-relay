@@ -1,130 +1,354 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
+
+/* Self-hosted variable fonts.
+   The previous setup declared "Inter Variable" as --font-sans but never loaded a
+   font file anywhere (no @font-face, no package, no <link>), so every surface
+   silently fell back to the system sans-serif. These are subsetted woff2 with
+   font-display: swap. */
+@import "@fontsource-variable/geist/wght.css";
+@import "@fontsource-variable/geist-mono/wght.css";
+
 @source "../../../apps/**/*.{ts,tsx}";
 @source "../**/*.{ts,tsx}";
 
 @custom-variant dark (&:is(.dark *));
 
+/* ===========================================================================
+   TIER 1 - PRIMITIVES
+   Raw values. Components never reference these directly.
+
+   The neutral ramp carries a slight cool cast (hue 265, chroma 0.004-0.012)
+   rather than being pure grey. It reads as deliberate rather than unstyled and
+   keeps the blue accent from looking bolted on.
+   =========================================================================== */
 :root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.58 0.22 27);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.809 0.105 251.813);
-  --chart-2: oklch(0.623 0.214 259.815);
-  --chart-3: oklch(0.546 0.245 262.881);
-  --chart-4: oklch(0.488 0.243 264.376);
-  --chart-5: oklch(0.424 0.199 265.638);
-  --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  --n-0: oklch(1 0 0);
+  --n-25: oklch(0.988 0.002 265);
+  --n-50: oklch(0.975 0.003 265);
+  --n-100: oklch(0.958 0.004 265);
+  --n-150: oklch(0.938 0.005 265);
+  --n-200: oklch(0.91 0.006 265);
+  --n-300: oklch(0.855 0.008 265);
+  --n-400: oklch(0.708 0.01 265);
+  --n-500: oklch(0.59 0.012 265);
+  --n-600: oklch(0.48 0.012 265);
+  --n-700: oklch(0.375 0.01 265);
+  --n-750: oklch(0.31 0.009 265);
+  --n-800: oklch(0.255 0.008 265);
+  --n-850: oklch(0.205 0.007 265);
+  --n-900: oklch(0.168 0.006 265);
+  --n-950: oklch(0.138 0.006 265);
+  --n-1000: oklch(0.105 0.005 265);
+
+  /* A single restrained accent, used for selection, focus and links. Kept
+     separate from --primary so navigation state never competes with the
+     confirm/destroy actions. */
+  --accent-300: oklch(0.8 0.085 250);
+  --accent-400: oklch(0.72 0.13 252);
+  --accent-500: oklch(0.62 0.17 255);
+  --accent-600: oklch(0.545 0.18 258);
+  --accent-700: oklch(0.47 0.165 260);
+
+  /* Status hues. Every sync state in this product maps onto one of these, so
+     they belong in the palette rather than being invented per component. */
+  --green-400: oklch(0.76 0.15 155);
+  --green-500: oklch(0.66 0.16 155);
+  --green-600: oklch(0.56 0.14 155);
+  --amber-400: oklch(0.83 0.15 85);
+  --amber-500: oklch(0.76 0.16 75);
+  --amber-600: oklch(0.66 0.15 70);
+  --red-400: oklch(0.72 0.19 22);
+  --red-500: oklch(0.62 0.215 25);
+  --red-600: oklch(0.54 0.215 27);
 }
 
+/* ===========================================================================
+   TIER 2 - SEMANTIC (light)
+   Purpose-driven. This is what components consume.
+   =========================================================================== */
+:root {
+  --background: var(--n-25);
+  --foreground: var(--n-900);
+
+  --card: var(--n-0);
+  --card-foreground: var(--n-900);
+  /* For wells: table headers, code, empty states */
+  --surface-sunken: var(--n-50);
+  --popover: var(--n-0);
+  --popover-foreground: var(--n-900);
+
+  --primary: var(--n-900);
+  --primary-foreground: var(--n-0);
+  --secondary: var(--n-100);
+  --secondary-foreground: var(--n-800);
+  --muted: var(--n-100);
+  --muted-foreground: var(--n-500);
+  --accent: var(--n-100);
+  --accent-foreground: var(--n-900);
+
+  --brand: var(--accent-600);
+  --brand-foreground: var(--n-0);
+  --brand-muted: color-mix(in oklch, var(--accent-500) 12%, transparent);
+  --brand-border: color-mix(in oklch, var(--accent-500) 38%, transparent);
+
+  --destructive: var(--red-600);
+  --destructive-foreground: var(--n-0);
+  --destructive-muted: color-mix(in oklch, var(--red-500) 11%, transparent);
+  --destructive-border: color-mix(in oklch, var(--red-500) 34%, transparent);
+
+  --success: var(--green-600);
+  --success-foreground: var(--n-0);
+  --success-muted: color-mix(in oklch, var(--green-500) 13%, transparent);
+  --success-border: color-mix(in oklch, var(--green-500) 34%, transparent);
+
+  --warning: var(--amber-600);
+  --warning-foreground: var(--n-0);
+  --warning-muted: color-mix(in oklch, var(--amber-500) 15%, transparent);
+  --warning-border: color-mix(in oklch, var(--amber-500) 36%, transparent);
+
+  --info: var(--accent-600);
+  --info-muted: var(--brand-muted);
+  --info-border: var(--brand-border);
+
+  /* Two border weights: hairline divides dense content, border edges
+     components. Stops tables from looking like cages. */
+  --border: var(--n-200);
+  --border-strong: var(--n-300);
+  --hairline: var(--n-150);
+  --input: var(--n-300);
+  --ring: var(--accent-500);
+
+  --sidebar: var(--n-50);
+  --sidebar-foreground: var(--n-700);
+  --sidebar-primary: var(--n-900);
+  --sidebar-primary-foreground: var(--n-0);
+  --sidebar-accent: var(--n-150);
+  --sidebar-accent-foreground: var(--n-900);
+  --sidebar-border: var(--n-200);
+  --sidebar-ring: var(--accent-500);
+
+  --chart-1: var(--accent-500);
+  --chart-2: var(--green-500);
+  --chart-3: var(--amber-500);
+  --chart-4: var(--red-500);
+  --chart-5: var(--n-400);
+
+  /* Near-square by design. The shared component layer already committed to
+     sharp corners; 2px keeps the edges from looking accidental without
+     drifting into consumer-app territory. */
+  --radius: 0.125rem;
+}
+
+/* ===========================================================================
+   TIER 2 - SEMANTIC (dark) - default mode for this console
+   Only semantic tokens flip; primitives stay fixed.
+   =========================================================================== */
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.87 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.371 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.809 0.105 251.813);
-  --chart-2: oklch(0.623 0.214 259.815);
-  --chart-3: oklch(0.546 0.245 262.881);
-  --chart-4: oklch(0.488 0.243 264.376);
-  --chart-5: oklch(0.424 0.199 265.638);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  --background: var(--n-1000);
+  --foreground: var(--n-50);
+
+  --card: var(--n-900);
+  --card-foreground: var(--n-50);
+  --surface-sunken: var(--n-950);
+  --popover: var(--n-850);
+  --popover-foreground: var(--n-50);
+
+  --primary: var(--n-50);
+  --primary-foreground: var(--n-900);
+  --secondary: var(--n-800);
+  --secondary-foreground: var(--n-50);
+  --muted: var(--n-850);
+  --muted-foreground: var(--n-400);
+  --accent: var(--n-800);
+  --accent-foreground: var(--n-50);
+
+  /* Lighter accent so it clears 4.5:1 against the dark surface */
+  --brand: var(--accent-400);
+  --brand-foreground: var(--n-1000);
+  --brand-muted: color-mix(in oklch, var(--accent-400) 16%, transparent);
+  --brand-border: color-mix(in oklch, var(--accent-400) 40%, transparent);
+
+  --destructive: var(--red-400);
+  --destructive-foreground: var(--n-1000);
+  --destructive-muted: color-mix(in oklch, var(--red-400) 16%, transparent);
+  --destructive-border: color-mix(in oklch, var(--red-400) 38%, transparent);
+
+  --success: var(--green-400);
+  --success-foreground: var(--n-1000);
+  --success-muted: color-mix(in oklch, var(--green-400) 16%, transparent);
+  --success-border: color-mix(in oklch, var(--green-400) 38%, transparent);
+
+  --warning: var(--amber-400);
+  --warning-foreground: var(--n-1000);
+  --warning-muted: color-mix(in oklch, var(--amber-400) 16%, transparent);
+  --warning-border: color-mix(in oklch, var(--amber-400) 38%, transparent);
+
+  --info: var(--accent-400);
+  --info-muted: var(--brand-muted);
+  --info-border: var(--brand-border);
+
+  --border: oklch(1 0 0 / 11%);
+  --border-strong: oklch(1 0 0 / 20%);
+  --hairline: oklch(1 0 0 / 7%);
+  --input: oklch(1 0 0 / 18%);
+  --ring: var(--accent-400);
+
+  --sidebar: var(--n-950);
+  --sidebar-foreground: var(--n-400);
+  --sidebar-primary: var(--n-50);
+  --sidebar-primary-foreground: var(--n-900);
+  --sidebar-accent: var(--n-850);
+  --sidebar-accent-foreground: var(--n-50);
+  --sidebar-border: oklch(1 0 0 / 9%);
+  --sidebar-ring: var(--accent-400);
+
+  --chart-1: var(--accent-400);
+  --chart-2: var(--green-400);
+  --chart-3: var(--amber-400);
+  --chart-4: var(--red-400);
+  --chart-5: var(--n-500);
 }
 
+/* ===========================================================================
+   TIER 3 - TAILWIND MAPPING
+   =========================================================================== */
 @theme inline {
-  --font-sans: "Inter Variable", sans-serif;
-  --color-sidebar-ring: var(--sidebar-ring);
-  --color-sidebar-border: var(--sidebar-border);
-  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
-  --color-sidebar-accent: var(--sidebar-accent);
-  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
-  --color-sidebar-primary: var(--sidebar-primary);
-  --color-sidebar-foreground: var(--sidebar-foreground);
-  --color-sidebar: var(--sidebar);
-  --color-chart-5: var(--chart-5);
-  --color-chart-4: var(--chart-4);
-  --color-chart-3: var(--chart-3);
-  --color-chart-2: var(--chart-2);
-  --color-chart-1: var(--chart-1);
-  --color-ring: var(--ring);
-  --color-input: var(--input);
-  --color-border: var(--border);
-  --color-destructive: var(--destructive);
-  --color-accent-foreground: var(--accent-foreground);
-  --color-accent: var(--accent);
-  --color-muted-foreground: var(--muted-foreground);
-  --color-muted: var(--muted);
-  --color-secondary-foreground: var(--secondary-foreground);
-  --color-secondary: var(--secondary);
-  --color-primary-foreground: var(--primary-foreground);
-  --color-primary: var(--primary);
-  --color-popover-foreground: var(--popover-foreground);
-  --color-popover: var(--popover);
-  --color-card-foreground: var(--card-foreground);
-  --color-card: var(--card);
-  --color-foreground: var(--foreground);
+  --font-sans: "Geist Variable", ui-sans-serif, system-ui, -apple-system,
+    "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+  --font-mono: "Geist Mono Variable", ui-monospace, SFMono-Regular, Menlo,
+    monospace;
+
   --color-background: var(--background);
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
-  --radius-2xl: calc(var(--radius) + 8px);
-  --radius-3xl: calc(var(--radius) + 12px);
-  --radius-4xl: calc(var(--radius) + 16px);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-surface-sunken: var(--surface-sunken);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+
+  --color-brand: var(--brand);
+  --color-brand-foreground: var(--brand-foreground);
+  --color-brand-muted: var(--brand-muted);
+  --color-brand-border: var(--brand-border);
+
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-destructive-muted: var(--destructive-muted);
+  --color-destructive-border: var(--destructive-border);
+
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-success-muted: var(--success-muted);
+  --color-success-border: var(--success-border);
+
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-warning-muted: var(--warning-muted);
+  --color-warning-border: var(--warning-border);
+
+  --color-info: var(--info);
+  --color-info-muted: var(--info-muted);
+  --color-info-border: var(--info-border);
+
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-hairline: var(--hairline);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+
+  --radius-sm: var(--radius);
+  --radius-md: calc(var(--radius) * 2);
+  --radius-lg: calc(var(--radius) * 3);
+  --radius-xl: calc(var(--radius) * 4);
+  --radius-2xl: calc(var(--radius) * 6);
+
+  /* Shell metrics live here so sidebar width and header height are defined once */
+  --spacing-sidebar: 15rem;
+  --spacing-header: 3.25rem;
 }
 
 @layer base {
   * {
-    @apply border-border outline-ring/50;
+    @apply border-border;
   }
-  body {
-    @apply font-sans bg-background text-foreground;
-  }
+
   html {
     @apply font-sans;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    letter-spacing: -0.006em;
+  }
+
+  /* One global focus treatment. Previously focus styles lived only inside the
+     shared component package, leaving every hand-rolled link, native checkbox
+     and select in the app layer keyboard-invisible. */
+  :focus-visible {
+    @apply outline-ring outline-2 outline-offset-2;
+  }
+
+  /* Tabular figures wherever numbers are compared down a column */
+  .tabular-nums-all,
+  table,
+  time {
+    font-variant-numeric: tabular-nums;
+  }
+
+  ::selection {
+    background-color: var(--brand-muted);
+  }
+
+  @supports (scrollbar-width: thin) {
+    * {
+      scrollbar-width: thin;
+      scrollbar-color: var(--border-strong) transparent;
+    }
+  }
+}
+
+@layer utilities {
+  /* Uppercase micro-label for table headers and metric captions */
+  .label-caps {
+    @apply text-[0.6875rem] font-medium tracking-[0.08em] uppercase;
+  }
+}
+
+/* Honor reduced motion globally; tw-animate-css and the spinner/pulse
+   utilities would otherwise keep running. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }

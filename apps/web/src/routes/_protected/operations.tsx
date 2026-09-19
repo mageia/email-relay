@@ -1,15 +1,53 @@
+import { Badge } from "@email-relay/ui/components/badge";
+import { Button } from "@email-relay/ui/components/button";
+import EmptyState from "@email-relay/ui/components/empty-state";
+import ErrorState from "@email-relay/ui/components/error-state";
+import PageHeader from "@email-relay/ui/components/page-header";
+import {
+  Panel,
+  PanelActions,
+  PanelDescription,
+  PanelHeader,
+  PanelTitle,
+} from "@email-relay/ui/components/panel";
+import { Skeleton } from "@email-relay/ui/components/skeleton";
+import StatusBadge from "@email-relay/ui/components/status-badge";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@email-relay/ui/components/table";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
+import { CheckCircle2Icon } from "lucide-react";
+import { toast } from "sonner";
 
 import AlertSummaryCards from "@/components/alert-summary-cards";
-import OperationsGroupBackfillSection, { type GroupBackfillPayload } from "@/components/operations-group-backfill";
-import OperationsMailboxBackfillSection, { type MailboxBackfillPayload } from "@/components/operations-mailbox-backfill";
+import BackfillPanel, {
+  type GroupBackfillPayload,
+  type MailboxBackfillPayload,
+} from "@/components/backfill-panel";
 import { client, orpc, queryClient } from "@/utils/orpc";
-import { toast } from "sonner";
 
 export const Route = createFileRoute("/_protected/operations")({
   component: OperationsPage,
 });
+
+/** Mirrors MAX_SYNC_ATTEMPTS in packages/mail/src/sync/retry.ts */
+const MAX_SYNC_ATTEMPTS = 5;
+
+type RetryJob = {
+  id: string;
+  mailboxAddress?: string | null;
+  provider?: string | null;
+  retryCount: number;
+  errorCategory?: string | null;
+  errorMessage?: string | null;
+  nextAttemptAt?: string | Date | null;
+};
 
 function OperationsPage() {
   const summary = useQuery(orpc.alerts.summary.queryOptions());
@@ -27,7 +65,11 @@ function OperationsPage() {
     },
   });
 
-  const triggerMailboxBackfill = async ({ mailboxId, rangeStart, rangeEnd }: MailboxBackfillPayload) => {
+  const triggerMailboxBackfill = async ({
+    mailboxId,
+    rangeStart,
+    rangeEnd,
+  }: MailboxBackfillPayload) => {
     try {
       await client.operations.triggerMailboxBackfill({
         mailboxId,
@@ -55,100 +97,138 @@ function OperationsPage() {
     }
   };
 
+  const jobs = (retryJobs.data ?? []) as RetryJob[];
+
   return (
-    <div className="space-y-6">
-      <div className="rounded-xl border p-4 space-y-3">
-        <div>
-          <h1 className="text-2xl font-semibold">Sync Operations</h1>
-          <p className="text-sm text-muted-foreground">
-            这里汇总所有告警，并提供单个邮箱或整个分组的历史补拉入口。
-          </p>
-        </div>
-        {summary.data ? (
-          <AlertSummaryCards summary={summary.data} />
-        ) : (
-          <p className="text-sm text-muted-foreground">概览正在加载...</p>
-        )}
-      </div>
+    <>
+      <PageHeader
+        title="同步运维"
+        description="汇总告警并提供单邮箱或整分组的历史补拉入口。"
+      />
 
-      <section className="rounded-xl border p-4 space-y-3">
-        <div>
-          <h2 className="text-xl font-semibold">按邮箱补拉</h2>
-          <p className="text-sm text-muted-foreground">
-            选择一个邮箱，设定日期范围即可把这段时间重新入队同步。
-          </p>
+      {summary.isPending ? (
+        <div className="grid gap-2.5 sm:grid-cols-2 xl:grid-cols-3">
+          {Array.from({ length: 3 }).map((_, index) => (
+            <Skeleton key={index} className="h-[5.25rem]" />
+          ))}
         </div>
-        {mailboxes.isLoading ? (
-          <p className="text-sm text-muted-foreground">邮箱数据加载中...</p>
-        ) : (
-          <OperationsMailboxBackfillSection
-            mailboxes={mailboxes.data ?? []}
-            onBackfill={triggerMailboxBackfill}
-          />
-        )}
-      </section>
+      ) : summary.data ? (
+        <AlertSummaryCards summary={summary.data} />
+      ) : null}
 
-      <section className="rounded-xl border p-4 space-y-3">
-        <div>
-          <h2 className="text-xl font-semibold">待重试任务</h2>
-          <p className="text-sm text-muted-foreground">对已经进入 retry-scheduled 的补拉任务可手动立即重排队。</p>
-        </div>
-        {retryJobs.isLoading ? (
-          <p className="text-sm text-muted-foreground">重试任务加载中...</p>
-        ) : retryJobs.data && retryJobs.data.length > 0 ? (
-          <ul className="space-y-3">
-            {retryJobs.data.map((job: { id: string; mailboxAddress?: string | null; provider?: string | null; retryCount: number; errorCategory?: string | null; errorMessage?: string | null; nextAttemptAt?: string | Date | null }) => (
-              <li key={job.id} className="rounded-lg border p-3">
-                <div className="font-medium">{job.mailboxAddress ?? job.id}</div>
-                <div className="text-sm text-muted-foreground">
-                  {(job.provider ?? "unknown")} · 已重试 {job.retryCount} 次 · {job.errorCategory ?? "temporary"}
-                </div>
-                {job.errorMessage ? <div className="mt-1 text-sm text-muted-foreground">{job.errorMessage}</div> : null}
-                {job.nextAttemptAt ? (
-                  <div className="mt-1 text-xs text-muted-foreground">
-                    下次自动重试：{new Date(job.nextAttemptAt).toLocaleString("zh-CN", { hour12: false })}
-                  </div>
-                ) : null}
-                <button
-                  className="mt-3 text-sm text-blue-600 hover:underline disabled:text-muted-foreground"
-                  disabled={retryJob.isPending}
-                  onClick={() => {
-                    retryJob.mutate(job.id, {
-                      onSuccess: () => {
-                        toast.success("已手动重新排队");
-                      },
-                      onError: (error) => {
-                        toast.error(`手动重试失败：${(error as Error).message}`);
-                      },
-                    });
-                  }}
-                >
-                  立即重试
-                </button>
-              </li>
+      <BackfillPanel
+        mailboxes={mailboxes.data ?? []}
+        groups={groups.data ?? []}
+        isLoading={mailboxes.isPending || groups.isPending}
+        onMailboxBackfill={triggerMailboxBackfill}
+        onGroupBackfill={triggerGroupBackfill}
+      />
+
+      <Panel>
+        <PanelHeader>
+          <div className="min-w-0">
+            <PanelTitle>待重试任务</PanelTitle>
+            <PanelDescription>
+              已进入 retry-scheduled 的补拉任务，可手动立即重排。
+            </PanelDescription>
+          </div>
+          <PanelActions>
+            {jobs.length > 0 ? <Badge tone="neutral">{jobs.length} 个</Badge> : null}
+          </PanelActions>
+        </PanelHeader>
+
+        {retryJobs.isPending ? (
+          <div className="flex flex-col gap-2 p-3.5">
+            {Array.from({ length: 3 }).map((_, index) => (
+              <Skeleton key={index} className="h-9" />
             ))}
-          </ul>
-        ) : (
-          <p className="text-sm text-muted-foreground">当前没有待重试任务。</p>
-        )}
-      </section>
-
-      <section className="rounded-xl border p-4 space-y-3">
-        <div>
-          <h2 className="text-xl font-semibold">按分组补拉</h2>
-          <p className="text-sm text-muted-foreground">
-            使用已有分组在一个表单里为多个邮箱批量触发历史补拉。
-          </p>
-        </div>
-        {groups.isLoading ? (
-          <p className="text-sm text-muted-foreground">分组数据加载中...</p>
-        ) : (
-          <OperationsGroupBackfillSection
-            groups={groups.data ?? []}
-            onBackfill={triggerGroupBackfill}
+          </div>
+        ) : retryJobs.isError ? (
+          <ErrorState
+            description="无法获取待重试任务列表。"
+            error={retryJobs.error}
+            onRetry={() => retryJobs.refetch()}
           />
+        ) : jobs.length === 0 ? (
+          <EmptyState
+            icon={<CheckCircle2Icon />}
+            title="当前没有待重试任务。"
+            description="所有同步任务都已完成，或尚未产生需要重试的失败。"
+          />
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>邮箱</TableHead>
+                <TableHead className="w-24">Provider</TableHead>
+                <TableHead className="w-20">重试</TableHead>
+                <TableHead className="w-32">错误类别</TableHead>
+                <TableHead className="w-44">下次自动重试</TableHead>
+                <TableHead className="w-24" />
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {jobs.map((job) => {
+                const exhausted = job.retryCount >= MAX_SYNC_ATTEMPTS;
+
+                return (
+                  <TableRow key={job.id}>
+                    <TableCell>
+                      <div className="font-medium">{job.mailboxAddress ?? job.id}</div>
+                      {job.errorMessage ? (
+                        <div className="mt-0.5 font-mono text-[0.6875rem] break-all text-muted-foreground">
+                          {job.errorMessage}
+                        </div>
+                      ) : null}
+                    </TableCell>
+                    <TableCell>
+                      <Badge tone="outline">{job.provider ?? "unknown"}</Badge>
+                    </TableCell>
+                    <TableCell className="tabular-nums">
+                      <span className={exhausted ? "text-destructive" : undefined}>
+                        {job.retryCount} / {MAX_SYNC_ATTEMPTS}
+                      </span>
+                    </TableCell>
+                    <TableCell>
+                      <StatusBadge status={job.errorCategory ?? "temporary"} />
+                    </TableCell>
+                    <TableCell>
+                      {exhausted ? (
+                        <span className="text-xs text-muted-foreground">已放弃</span>
+                      ) : job.nextAttemptAt ? (
+                        <time
+                          dateTime={new Date(job.nextAttemptAt).toISOString()}
+                          className="text-xs text-muted-foreground"
+                        >
+                          {new Date(job.nextAttemptAt).toLocaleString("zh-CN", { hour12: false })}
+                        </time>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">—</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={retryJob.isPending || exhausted}
+                        onClick={() => {
+                          retryJob.mutate(job.id, {
+                            onSuccess: () => toast.success("已手动重新排队"),
+                            onError: (error) =>
+                              toast.error(`手动重试失败：${(error as Error).message}`),
+                          });
+                        }}
+                      >
+                        立即重试
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
         )}
-      </section>
-    </div>
+      </Panel>
+    </>
   );
 }

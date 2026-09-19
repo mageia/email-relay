@@ -1,7 +1,7 @@
 import { Button } from "@email-relay/ui/components/button";
+import Field from "@email-relay/ui/components/field";
 import { Input } from "@email-relay/ui/components/input";
-import { Label } from "@email-relay/ui/components/label";
-import { useMemo, useState } from "react";
+import * as React from "react";
 
 const DEFAULT_BACKFILL_RANGE_DAYS = 7;
 const DAY_IN_MS = 24 * 60 * 60 * 1000;
@@ -43,21 +43,30 @@ export function validateBackfillRange(value: BackfillFormValue, today: string): 
 export default function BackfillForm({
   onSubmit,
   isSubmitting,
+  /** Rendered between the date fields and the submit button. */
+  children,
+  /** Unique prefix for field ids, needed when several forms share a page. */
+  idPrefix = "",
 }: {
   onSubmit: (value: BackfillFormValue) => Promise<void>;
   isSubmitting: boolean;
+  children?: React.ReactNode;
+  idPrefix?: string;
 }) {
   const today = toDateInputValue(new Date());
-  const [value, setValue] = useState<BackfillFormValue>({
+  const [value, setValue] = React.useState<BackfillFormValue>({
     rangeStart: toDateInputValue(new Date(Date.now() - DEFAULT_BACKFILL_RANGE_DAYS * DAY_IN_MS)),
     rangeEnd: today,
   });
-  const errors = useMemo(() => validateBackfillRange(value, today), [today, value]);
+  const errors = React.useMemo(() => validateBackfillRange(value, today), [today, value]);
   const hasErrors = Object.values(errors).some(Boolean);
+
+  const startId = `${idPrefix}rangeStart`;
+  const endId = `${idPrefix}rangeEnd`;
 
   return (
     <form
-      className="grid gap-4 md:grid-cols-[1fr_1fr_auto]"
+      className="flex flex-col gap-3"
       onSubmit={(event) => {
         event.preventDefault();
         if (hasErrors) {
@@ -66,33 +75,38 @@ export default function BackfillForm({
         void onSubmit(value);
       }}
     >
-      <div className="space-y-2">
-        <Label htmlFor="rangeStart">开始日期</Label>
-        <Input
-          aria-invalid={Boolean(errors.rangeStart)}
-          id="rangeStart"
-          max={today}
-          type="date"
-          value={value.rangeStart}
-          onChange={(event) => setValue((current) => ({ ...current, rangeStart: event.target.value }))}
-        />
-        {errors.rangeStart ? <p className="text-xs text-red-500">{errors.rangeStart}</p> : null}
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-[1fr_1fr_auto] lg:items-start">
+        <Field id={startId} label="开始日期" error={errors.rangeStart}>
+          <Input
+            max={today}
+            type="date"
+            value={value.rangeStart}
+            onChange={(event) =>
+              setValue((current) => ({ ...current, rangeStart: event.target.value }))
+            }
+          />
+        </Field>
+        <Field id={endId} label="结束日期" error={errors.rangeEnd}>
+          <Input
+            max={today}
+            type="date"
+            value={value.rangeEnd}
+            onChange={(event) =>
+              setValue((current) => ({ ...current, rangeEnd: event.target.value }))
+            }
+          />
+        </Field>
+        <Button
+          type="submit"
+          variant="brand"
+          disabled={isSubmitting || hasErrors}
+          /* Aligns with the inputs, which sit below their labels */
+          className="mt-0 self-start sm:col-span-2 sm:justify-self-start lg:col-span-1 lg:mt-[1.375rem]"
+        >
+          {isSubmitting ? "提交中..." : "触发补拉"}
+        </Button>
       </div>
-      <div className="space-y-2">
-        <Label htmlFor="rangeEnd">结束日期</Label>
-        <Input
-          aria-invalid={Boolean(errors.rangeEnd)}
-          id="rangeEnd"
-          max={today}
-          type="date"
-          value={value.rangeEnd}
-          onChange={(event) => setValue((current) => ({ ...current, rangeEnd: event.target.value }))}
-        />
-        {errors.rangeEnd ? <p className="text-xs text-red-500">{errors.rangeEnd}</p> : null}
-      </div>
-      <Button type="submit" disabled={isSubmitting || hasErrors} className="self-end">
-        {isSubmitting ? "提交中..." : "触发补拉"}
-      </Button>
+      {children}
     </form>
   );
 }
